@@ -254,6 +254,21 @@ function getSecondaryFromPrimary(primary: string): string {
   return shiftHue(primary, 34);
 }
 
+function hexToFigmaColorValue(hex: string): {
+  colorSpace: "srgb";
+  components: [number, number, number];
+  alpha: number;
+  hex: string;
+} {
+  const [r, g, b] = hexToRgb(hex);
+  return {
+    colorSpace: "srgb",
+    components: [r / 255, g / 255, b / 255],
+    alpha: 1,
+    hex: hex.toUpperCase(),
+  };
+}
+
 function pxToNumber(value: string): number {
   return Number.parseFloat(value.replace("px", ""));
 }
@@ -483,26 +498,35 @@ function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
 function toDtcgFigmaVariables(tokens: DesignTokens) {
   const colorScales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const colors = {
-    primary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: tokens.colors[`primary/${scale}`].toUpperCase() };
+    primary: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
+      (acc, scale) => {
+        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`primary/${scale}`]) };
+        return acc;
+      },
+      {},
+    ),
+    secondary: colorScales.reduce<
+      Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>
+    >((acc, scale) => {
+      acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`secondary/${scale}`]) };
       return acc;
     }, {}),
-    secondary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: tokens.colors[`secondary/${scale}`].toUpperCase() };
-      return acc;
-    }, {}),
-    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: tokens.colors[`neutral/${scale}`].toUpperCase() };
-      return acc;
-    }, {}),
+    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
+      (acc, scale) => {
+        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`neutral/${scale}`]) };
+        return acc;
+      },
+      {},
+    ),
   };
 
-  const fontSizes = Object.entries(tokens.fontSizes).reduce<
-    Record<string, { $type: "dimension"; $value: { value: number; unit: "px" } }>
-  >((acc, [size, value]) => {
-    acc[size] = { $type: "dimension", $value: { value: pxToNumber(value), unit: "px" } };
-    return acc;
-  }, {});
+  const fontSizes = Object.entries(tokens.fontSizes).reduce<Record<string, { $type: "number"; $value: number }>>(
+    (acc, [size, value]) => {
+      acc[size] = { $type: "number", $value: pxToNumber(value) };
+      return acc;
+    },
+    {},
+  );
 
   const lineHeights = Object.entries(tokens.lineHeights).reduce<Record<string, { $type: "number"; $value: number }>>(
     (acc, [size, value]) => {
@@ -513,14 +537,14 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
   );
 
   return {
-    color: colors,
-    font: {
-      family: {
-        primary: { $type: "fontFamily", $value: tokens.fontFamily.primary },
-        secondary: { $type: "fontFamily", $value: tokens.fontFamily.secondary },
+    colors,
+    typography: {
+      fontFamily: {
+        primary: { $type: "string", $value: tokens.fontFamily.primary },
+        secondary: { $type: "string", $value: tokens.fontFamily.secondary },
       },
-      size: fontSizes,
-      lineHeight: lineHeights,
+      fontSizes,
+      lineHeights,
     },
   };
 }
@@ -562,6 +586,8 @@ function StepShell({
   onNext,
   nextLabel = "Next",
   canBack = true,
+  nextDisabled = false,
+  nextDisabledReason,
 }: {
   title: string;
   description?: string;
@@ -572,6 +598,8 @@ function StepShell({
   onNext: () => void;
   nextLabel?: string;
   canBack?: boolean;
+  nextDisabled?: boolean;
+  nextDisabledReason?: string;
 }) {
   const progress = Math.round((step / total) * 100);
 
@@ -609,12 +637,14 @@ function StepShell({
         </button>
         <button
           type="button"
+          disabled={nextDisabled}
           onClick={onNext}
-          className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+          className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {nextLabel}
         </button>
       </div>
+      {nextDisabledReason ? <p className="mt-2 text-right text-xs text-slate-500">{nextDisabledReason}</p> : null}
     </div>
   );
 }
@@ -834,6 +864,8 @@ export default function Home() {
           onBack={() => setMode("landing")}
           onNext={() => setNewStep(2)}
           canBack
+          nextDisabled={!newData.brandName.trim()}
+          nextDisabledReason={!newData.brandName.trim() ? "Brand name is required." : undefined}
         >
           <input
             value={newData.brandName}
@@ -863,6 +895,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(1)}
           onNext={() => setNewStep(3)}
+          nextDisabled={
+            newData.designingFor.length === 0 ||
+            (newData.designingFor.includes("Other") && !newData.designingForOther.trim())
+          }
+          nextDisabledReason={
+            newData.designingFor.length === 0
+              ? "Select at least one option."
+              : newData.designingFor.includes("Other") && !newData.designingForOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => {
@@ -919,6 +962,14 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(2)}
           onNext={() => setNewStep(4)}
+          nextDisabled={!newData.industry || (newData.industry === "Other" && !newData.industryOther.trim())}
+          nextDisabledReason={
+            !newData.industry
+              ? "Select an industry."
+              : newData.industry === "Other" && !newData.industryOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => (
@@ -969,6 +1020,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(3)}
           onNext={() => setNewStep(5)}
+          nextDisabled={
+            newData.personality.length === 0 ||
+            (newData.personality.includes("Other") && !newData.personalityOther.trim())
+          }
+          nextDisabledReason={
+            newData.personality.length === 0
+              ? "Select at least one personality."
+              : newData.personality.includes("Other") && !newData.personalityOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => {
@@ -1027,6 +1089,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(4)}
           onNext={() => setNewStep(6)}
+          nextDisabled={
+            newData.feeling.length === 0 ||
+            (newData.feeling.includes("Other") && !newData.feelingOther.trim())
+          }
+          nextDisabledReason={
+            newData.feeling.length === 0
+              ? "Select at least one feeling."
+              : newData.feeling.includes("Other") && !newData.feelingOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => {
@@ -1073,6 +1146,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(5)}
           onNext={() => setNewStep(7)}
+          nextDisabled={
+            !newData.colorDirection ||
+            (newData.colorDirection === "Other" && !newData.colorDirectionOther.trim())
+          }
+          nextDisabledReason={
+            !newData.colorDirection
+              ? "Select a color direction."
+              : newData.colorDirection === "Other" && !newData.colorDirectionOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => (
@@ -1109,6 +1193,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(6)}
           onNext={() => setNewStep(8)}
+          nextDisabled={
+            !newData.hasPrimaryColor ||
+            (newData.hasPrimaryColor === "Yes" && !normalizeHex(newData.primaryColor))
+          }
+          nextDisabledReason={
+            !newData.hasPrimaryColor
+              ? "Select Yes or No."
+              : newData.hasPrimaryColor === "Yes" && !normalizeHex(newData.primaryColor)
+                ? "Enter a valid HEX primary color."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {(["Yes", "No"] as const).map((opt) => (
@@ -1152,6 +1247,8 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(7)}
           onNext={() => setNewStep(9)}
+          nextDisabled={!newData.interfaceMode}
+          nextDisabledReason={!newData.interfaceMode ? "Select an interface mode." : undefined}
         >
           <div className="flex flex-wrap gap-3">
             {(["Light", "Dark", "Both"] as const).map((opt) => (
@@ -1189,6 +1286,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(8)}
           onNext={() => setNewStep(10)}
+          nextDisabled={
+            !newData.typographyStyle ||
+            (newData.typographyStyle === "Other" && !newData.typographyStyleOther.trim())
+          }
+          nextDisabledReason={
+            !newData.typographyStyle
+              ? "Select a typography style."
+              : newData.typographyStyle === "Other" && !newData.typographyStyleOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => (
@@ -1244,6 +1352,8 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(10)}
           onNext={() => setNewStep(12)}
+          nextDisabled={!newData.typeScale}
+          nextDisabledReason={!newData.typeScale ? "Select a scale style." : undefined}
         >
           <div className="flex flex-wrap gap-3">
             {(["Compact", "Balanced", "Expressive"] as const).map((opt) => (
@@ -1281,6 +1391,17 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(11)}
           onNext={() => setNewStep(13)}
+          nextDisabled={
+            !newData.spacingPreference ||
+            (newData.spacingPreference === "Other" && !newData.spacingOther.trim())
+          }
+          nextDisabledReason={
+            !newData.spacingPreference
+              ? "Select a spacing preference."
+              : newData.spacingPreference === "Other" && !newData.spacingOther.trim()
+                ? "Please fill the Other field."
+                : undefined
+          }
         >
           <div className="flex flex-wrap gap-3">
             {options.map((opt) => (
@@ -1317,6 +1438,8 @@ export default function Home() {
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(12)}
           onNext={() => setNewStep(14)}
+          nextDisabled={!newData.accessibilityPriority}
+          nextDisabledReason={!newData.accessibilityPriority ? "Select accessibility priority." : undefined}
         >
           <div className="flex flex-wrap gap-3">
             {(["Standard contrast", "High contrast", "WCAG focused"] as const).map((opt) => (
@@ -1366,6 +1489,8 @@ export default function Home() {
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setMode("landing")}
         onNext={() => setExistingStep(2)}
+        nextDisabled={!existingData.brandName.trim()}
+        nextDisabledReason={!existingData.brandName.trim() ? "Brand name is required." : undefined}
       >
         <input
           value={existingData.brandName}
@@ -1385,7 +1510,25 @@ export default function Home() {
         step={2}
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(1)}
-        onNext={() => setExistingStep(3)}
+        onNext={() => {
+          const normalized = existingData.brandColors
+            .map((color) => normalizeHex(color))
+            .filter((color): color is string => color !== null);
+          const unique = [...new Set(normalized)];
+          set({ brandColors: unique.length > 0 ? unique : ["#3b82f6"] });
+          setExistingStep(3);
+        }}
+        nextDisabled={
+          existingData.brandColors.length === 0 ||
+          existingData.brandColors.some((color) => !normalizeHex(color))
+        }
+        nextDisabledReason={
+          existingData.brandColors.length === 0
+            ? "Add at least one valid HEX color."
+            : existingData.brandColors.some((color) => !normalizeHex(color))
+              ? "Fix invalid HEX values before continuing."
+              : undefined
+        }
       >
         <div className="space-y-3">
           <div className="rounded-xl border border-slate-700/80 bg-slate-950/70 p-3">
@@ -1494,6 +1637,8 @@ export default function Home() {
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(2)}
         onNext={() => setExistingStep(4)}
+        nextDisabled={!existingData.primaryFontFamily.trim()}
+        nextDisabledReason={!existingData.primaryFontFamily.trim() ? "Primary font family is required." : undefined}
       >
         <input
           value={existingData.primaryFontFamily}
@@ -1542,6 +1687,17 @@ export default function Home() {
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(4)}
         onNext={() => setExistingStep(6)}
+        nextDisabled={
+          existingData.designingFor.length === 0 ||
+          (existingData.designingFor.includes("Other") && !existingData.designingForOther.trim())
+        }
+        nextDisabledReason={
+          existingData.designingFor.length === 0
+            ? "Select at least one option."
+            : existingData.designingFor.includes("Other") && !existingData.designingForOther.trim()
+              ? "Please fill the Other field."
+              : undefined
+        }
       >
         <div className="flex flex-wrap gap-3">
           {options.map((opt) => {
@@ -1587,6 +1743,8 @@ export default function Home() {
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(5)}
         onNext={() => setExistingStep(7)}
+        nextDisabled={!existingData.typeScale}
+        nextDisabledReason={!existingData.typeScale ? "Select a scale style." : undefined}
       >
         <div className="flex flex-wrap gap-3">
           {(["Compact", "Balanced", "Expressive"] as const).map((opt) => (
@@ -1615,6 +1773,8 @@ export default function Home() {
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(6)}
         onNext={() => setExistingStep(8)}
+        nextDisabled={!existingData.spacingScale}
+        nextDisabledReason={!existingData.spacingScale ? "Select spacing scale." : undefined}
       >
         <div className="flex flex-wrap gap-3">
           {(["Compact", "Balanced", "Spacious"] as const).map((opt) => (
@@ -1643,6 +1803,8 @@ export default function Home() {
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(7)}
         onNext={() => setExistingStep(9)}
+        nextDisabled={!existingData.mode}
+        nextDisabledReason={!existingData.mode ? "Select interface mode." : undefined}
       >
         <div className="flex flex-wrap gap-3">
           {(["Light", "Dark", "Both"] as const).map((opt) => (
