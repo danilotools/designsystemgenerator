@@ -1283,11 +1283,42 @@ export default function Home() {
     if (step === 7) {
       return (
         <StepShell
-          title="Do you already have a primary color?"
+          title="Palette Combination"
+          description="Choose the color harmony rule used to generate secondary and tertiary colors."
           step={7}
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(6)}
           onNext={() => setNewStep(8)}
+          nextDisabled={!newData.paletteCombination}
+          nextDisabledReason={!newData.paletteCombination ? "Select a palette combination." : undefined}
+        >
+          <div className="flex flex-wrap gap-3">
+            {(["Complementary", "Monochromatic", "Analogous", "Triadic", "Tetradic"] as const).map((opt) => (
+              <button
+                key={opt}
+                className={`${chipBase} ${
+                  newData.paletteCombination === opt
+                    ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                    : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                }`}
+                onClick={() => set({ paletteCombination: opt })}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </StepShell>
+      );
+    }
+
+    if (step === 8) {
+      return (
+        <StepShell
+          title="Do you already have a primary color?"
+          step={8}
+          total={NEW_TOTAL_STEPS}
+          onBack={() => setNewStep(7)}
+          onNext={() => setNewStep(9)}
           nextDisabled={
             !newData.hasPrimaryColor ||
             (newData.hasPrimaryColor === "Yes" && !normalizeHex(newData.primaryColor))
@@ -1334,14 +1365,14 @@ export default function Home() {
       );
     }
 
-    if (step === 8) {
+    if (step === 9) {
       return (
         <StepShell
           title="Interface Mode"
-          step={8}
+          step={9}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(7)}
-          onNext={() => setNewStep(9)}
+          onBack={() => setNewStep(8)}
+          onNext={() => setNewStep(10)}
           nextDisabled={!newData.interfaceMode}
           nextDisabledReason={!newData.interfaceMode ? "Select an interface mode." : undefined}
         >
@@ -1364,7 +1395,7 @@ export default function Home() {
       );
     }
 
-    if (step === 9) {
+    if (step === 10) {
       const options: TypographyStyle[] = [
         "Modern Sans",
         "Humanist Sans",
@@ -1377,10 +1408,10 @@ export default function Home() {
       return (
         <StepShell
           title="Typography Style"
-          step={9}
+          step={10}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(8)}
-          onNext={() => setNewStep(10)}
+          onBack={() => setNewStep(9)}
+          onNext={() => setNewStep(11)}
           nextDisabled={
             !newData.typographyStyle ||
             (newData.typographyStyle === "Other" && !newData.typographyStyleOther.trim())
@@ -1420,14 +1451,14 @@ export default function Home() {
       );
     }
 
-    if (step === 10) {
+    if (step === 11) {
       return (
         <StepShell
           title="Font Preference (optional)"
-          step={10}
+          step={11}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(9)}
-          onNext={() => setNewStep(11)}
+          onBack={() => setNewStep(10)}
+          onNext={() => setNewStep(12)}
         >
           <input
             value={newData.fontPreference}
@@ -1439,14 +1470,14 @@ export default function Home() {
       );
     }
 
-    if (step === 11) {
+    if (step === 12) {
       return (
         <StepShell
           title="Typography Scale Style"
-          step={11}
+          step={12}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(10)}
-          onNext={() => setNewStep(12)}
+          onBack={() => setNewStep(11)}
+          onNext={() => setNewStep(13)}
           nextDisabled={!newData.typeScale}
           nextDisabledReason={!newData.typeScale ? "Select a scale style." : undefined}
         >
@@ -1469,7 +1500,7 @@ export default function Home() {
       );
     }
 
-    if (step === 12) {
+    if (step === 13) {
       const options: SpacingPref[] = [
         "Compact UI",
         "Balanced spacing",
@@ -1482,10 +1513,10 @@ export default function Home() {
         <StepShell
           title="Spacing Scale Preference"
           description="This defines layout rhythm and spacing tokens."
-          step={12}
+          step={13}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(11)}
-          onNext={() => setNewStep(13)}
+          onBack={() => setNewStep(12)}
+          onNext={() => setNewStep(14)}
           nextDisabled={
             !newData.spacingPreference ||
             (newData.spacingPreference === "Other" && !newData.spacingOther.trim())
@@ -1525,14 +1556,14 @@ export default function Home() {
       );
     }
 
-    if (step === 13) {
+    if (step === 14) {
       return (
         <StepShell
           title="Accessibility Priority"
-          step={13}
+          step={14}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(12)}
-          onNext={() => setNewStep(14)}
+          onBack={() => setNewStep(13)}
+          onNext={() => setNewStep(15)}
           nextDisabled={!newData.accessibilityPriority}
           nextDisabledReason={!newData.accessibilityPriority ? "Select accessibility priority." : undefined}
         >
@@ -1561,9 +1592,9 @@ export default function Home() {
       <StepShell
         title="Review"
         description="Preview your generated design tokens before export."
-        step={14}
+        step={15}
         total={NEW_TOTAL_STEPS}
-        onBack={() => setNewStep(13)}
+        onBack={() => setNewStep(14)}
         onNext={() => setNewTokens(previewTokens)}
         nextLabel="Generate Design System"
       >
@@ -1920,14 +1951,45 @@ export default function Home() {
     );
   }
 
+  if (step === 9) {
+    return (
+      <StepShell
+        title="Palette Combination"
+        description="Choose the color harmony rule used to generate missing secondary/tertiary colors."
+        step={9}
+        total={EXISTING_TOTAL_STEPS}
+        onBack={() => setExistingStep(8)}
+        onNext={() => setExistingStep(10)}
+        nextDisabled={!existingData.paletteCombination}
+        nextDisabledReason={!existingData.paletteCombination ? "Select a palette combination." : undefined}
+      >
+        <div className="flex flex-wrap gap-3">
+          {(["Complementary", "Monochromatic", "Analogous", "Triadic", "Tetradic"] as const).map((opt) => (
+            <button
+              key={opt}
+              className={`${chipBase} ${
+                existingData.paletteCombination === opt
+                  ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                  : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+              }`}
+              onClick={() => set({ paletteCombination: opt })}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </StepShell>
+    );
+  }
+
   const previewTokens = generateTokensFromExisting(existingData);
   return (
     <StepShell
       title="Preview"
       description="Review generated color, typography, and spacing tokens."
-      step={9}
+      step={10}
       total={EXISTING_TOTAL_STEPS}
-      onBack={() => setExistingStep(8)}
+      onBack={() => setExistingStep(9)}
       onNext={() => setExistingTokens(previewTokens)}
       nextLabel="Export JSON"
     >
