@@ -300,35 +300,56 @@ function getFontFromStyle(style: string, preferred: string): string {
 function getTypeScale(style: string): Record<string, string> {
   if (style === "Compact") {
     return {
+      xxs: "11px",
       xs: "12px",
       sm: "13px",
       md: "15px",
-      lg: "18px",
-      xl: "24px",
-      "2xl": "32px",
-      "3xl": "40px",
+      lg: "17px",
+      xl: "20px",
+      "2xl": "24px",
+      "3xl": "30px",
+      "4xl": "36px",
+      "5xl": "44px",
     };
   }
   if (style === "Expressive") {
     return {
-      xs: "13px",
-      sm: "15px",
+      xxs: "12px",
+      xs: "14px",
+      sm: "16px",
       md: "18px",
-      lg: "24px",
-      xl: "32px",
-      "2xl": "44px",
-      "3xl": "56px",
+      lg: "22px",
+      xl: "28px",
+      "2xl": "36px",
+      "3xl": "46px",
+      "4xl": "58px",
+      "5xl": "72px",
     };
   }
   return {
-    xs: "12px",
+    xxs: "11px",
+    xs: "13px",
     sm: "14px",
     md: "16px",
-    lg: "20px",
-    xl: "28px",
-    "2xl": "36px",
-    "3xl": "48px",
+    lg: "19px",
+    xl: "24px",
+    "2xl": "30px",
+    "3xl": "38px",
+    "4xl": "48px",
+    "5xl": "60px",
   };
+}
+
+function getLineHeightsFromSizes(fontSizes: Record<string, string>): Record<string, string> {
+  return Object.entries(fontSizes).reduce<Record<string, string>>((acc, [key, value]) => {
+    const px = pxToNumber(value);
+    if (px <= 14) acc[key] = "1.5";
+    else if (px <= 18) acc[key] = "1.45";
+    else if (px <= 28) acc[key] = "1.35";
+    else if (px <= 44) acc[key] = "1.25";
+    else acc[key] = "1.15";
+    return acc;
+  }, {});
 }
 
 function getSpacingScale(pref: string): Record<string, string> {
@@ -436,22 +457,15 @@ function generateTokensFromNew(data: NewBrandData): DesignTokens {
   const baseColor =
     data.hasPrimaryColor === "Yes" ? data.primaryColor : getPrimaryFromDirection(data.colorDirection);
   const secondaryColor = getSecondaryFromPrimary(baseColor);
+  const fontSizes = getTypeScale(data.typeScale);
   return {
     colors: buildPalette(baseColor, secondaryColor, data.interfaceMode),
     fontFamily: {
       primary: getFontFromStyle(data.typographyStyle, data.fontPreference),
       secondary: data.typographyStyle === "Serif" ? "Inter" : "Merriweather",
     },
-    fontSizes: getTypeScale(data.typeScale),
-    lineHeights: {
-      xs: "1.4",
-      sm: "1.45",
-      md: "1.5",
-      lg: "1.4",
-      xl: "1.3",
-      "2xl": "1.2",
-      "3xl": "1.15",
-    },
+    fontSizes,
+    lineHeights: getLineHeightsFromSizes(fontSizes),
     fontWeights:
       data.accessibilityPriority === "High contrast" || data.accessibilityPriority === "WCAG focused"
         ? { regular: 500, medium: 600, semibold: 700, bold: 800 }
@@ -463,22 +477,15 @@ function generateTokensFromNew(data: NewBrandData): DesignTokens {
 function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
   const primary = data.brandColors[0] || "#3b82f6";
   const secondary = data.brandColors[1] || getSecondaryFromPrimary(primary);
+  const fontSizes = getTypeScale(data.typeScale);
   return {
     colors: buildPalette(primary, secondary, data.mode),
     fontFamily: {
       primary: data.primaryFontFamily || "Inter",
       secondary: data.secondaryFontFamily || "Merriweather",
     },
-    fontSizes: getTypeScale(data.typeScale),
-    lineHeights: {
-      xs: "1.4",
-      sm: "1.45",
-      md: "1.5",
-      lg: "1.4",
-      xl: "1.3",
-      "2xl": "1.2",
-      "3xl": "1.15",
-    },
+    fontSizes,
+    lineHeights: getLineHeightsFromSizes(fontSizes),
     fontWeights: { regular: 400, medium: 500, semibold: 600, bold: 700 },
     spacingScale: getSpacingScale(data.spacingScale),
   };
@@ -630,7 +637,7 @@ function StepShell({
           type="button"
           disabled={nextDisabled}
           onClick={onNext}
-          className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {nextLabel}
         </button>
@@ -720,7 +727,7 @@ function JsonPanel({ tokens }: { tokens: DesignTokens }) {
         <button
           type="button"
           onClick={downloadJson}
-          className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+          className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400"
         >
           Download JSON
         </button>
