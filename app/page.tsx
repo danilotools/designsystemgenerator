@@ -1283,7 +1283,7 @@ export default function Home() {
     if (step === 7) {
       return (
         <StepShell
-          title="Palette Combination"
+          title="Color Palette Combination"
           description="Choose the color harmony rule used to generate secondary and tertiary colors."
           step={7}
           total={NEW_TOTAL_STEPS}
@@ -1758,11 +1758,41 @@ export default function Home() {
   if (step === 3) {
     return (
       <StepShell
-        title="Primary Font Family"
+        title="Color Palette Combination"
         step={3}
         total={EXISTING_TOTAL_STEPS}
         onBack={() => setExistingStep(2)}
         onNext={() => setExistingStep(4)}
+        nextDisabled={!existingData.paletteCombination}
+        nextDisabledReason={!existingData.paletteCombination ? "Select a palette combination." : undefined}
+      >
+        <div className="flex flex-wrap gap-3">
+          {(["Complementary", "Monochromatic", "Analogous", "Triadic", "Tetradic"] as const).map((opt) => (
+            <button
+              key={opt}
+              className={`${chipBase} ${
+                existingData.paletteCombination === opt
+                  ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                  : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+              }`}
+              onClick={() => set({ paletteCombination: opt })}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </StepShell>
+    );
+  }
+
+  if (step === 4) {
+    return (
+      <StepShell
+        title="Primary Font Family"
+        step={4}
+        total={EXISTING_TOTAL_STEPS}
+        onBack={() => setExistingStep(3)}
+        onNext={() => setExistingStep(5)}
         nextDisabled={!existingData.primaryFontFamily.trim()}
         nextDisabledReason={!existingData.primaryFontFamily.trim() ? "Primary font family is required." : undefined}
       >
@@ -1776,14 +1806,14 @@ export default function Home() {
     );
   }
 
-  if (step === 4) {
+  if (step === 5) {
     return (
       <StepShell
         title="Secondary Font Family (optional)"
-        step={4}
+        step={5}
         total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(3)}
-        onNext={() => setExistingStep(5)}
+        onBack={() => setExistingStep(4)}
+        onNext={() => setExistingStep(6)}
       >
         <input
           value={existingData.secondaryFontFamily}
@@ -1795,7 +1825,7 @@ export default function Home() {
     );
   }
 
-  if (step === 5) {
+  if (step === 6) {
     const options: Exclude<AppTarget, "Design System Library">[] = [
       "Mobile App",
       "Web App",
@@ -1809,10 +1839,10 @@ export default function Home() {
       <StepShell
         title="What are you designing for?"
         description="Multi-select"
-        step={5}
+        step={6}
         total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(4)}
-        onNext={() => setExistingStep(6)}
+        onBack={() => setExistingStep(5)}
+        onNext={() => setExistingStep(7)}
         nextDisabled={
           existingData.designingFor.length === 0 ||
           (existingData.designingFor.includes("Other") && !existingData.designingForOther.trim())
@@ -1861,14 +1891,14 @@ export default function Home() {
     );
   }
 
-  if (step === 6) {
+  if (step === 7) {
     return (
       <StepShell
         title="Typography Scale Style"
-        step={6}
+        step={7}
         total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(5)}
-        onNext={() => setExistingStep(7)}
+        onBack={() => setExistingStep(6)}
+        onNext={() => setExistingStep(8)}
         nextDisabled={!existingData.typeScale}
         nextDisabledReason={!existingData.typeScale ? "Select a scale style." : undefined}
       >
@@ -1891,14 +1921,14 @@ export default function Home() {
     );
   }
 
-  if (step === 7) {
+  if (step === 8) {
     return (
       <StepShell
         title="Spacing Scale"
-        step={7}
+        step={8}
         total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(6)}
-        onNext={() => setExistingStep(8)}
+        onBack={() => setExistingStep(7)}
+        onNext={() => setExistingStep(9)}
         nextDisabled={!existingData.spacingScale}
         nextDisabledReason={!existingData.spacingScale ? "Select spacing scale." : undefined}
       >
@@ -1921,14 +1951,14 @@ export default function Home() {
     );
   }
 
-  if (step === 8) {
+  if (step === 9) {
     return (
       <StepShell
         title="Mode"
-        step={8}
+        step={9}
         total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(7)}
-        onNext={() => setExistingStep(9)}
+        onBack={() => setExistingStep(8)}
+        onNext={() => setExistingStep(10)}
         nextDisabled={!existingData.mode}
         nextDisabledReason={!existingData.mode ? "Select interface mode." : undefined}
       >
@@ -1942,37 +1972,6 @@ export default function Home() {
                   : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
               }`}
               onClick={() => set({ mode: opt })}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      </StepShell>
-    );
-  }
-
-  if (step === 9) {
-    return (
-      <StepShell
-        title="Palette Combination"
-        description="Choose the color harmony rule used to generate missing secondary/tertiary colors."
-        step={9}
-        total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(8)}
-        onNext={() => setExistingStep(10)}
-        nextDisabled={!existingData.paletteCombination}
-        nextDisabledReason={!existingData.paletteCombination ? "Select a palette combination." : undefined}
-      >
-        <div className="flex flex-wrap gap-3">
-          {(["Complementary", "Monochromatic", "Analogous", "Triadic", "Tetradic"] as const).map((opt) => (
-            <button
-              key={opt}
-              className={`${chipBase} ${
-                existingData.paletteCombination === opt
-                  ? "border-blue-400 bg-blue-500/20 text-blue-100"
-                  : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-              }`}
-              onClick={() => set({ paletteCombination: opt })}
             >
               {opt}
             </button>
