@@ -52,7 +52,7 @@ type ColorDirection =
   | "Minimal"
   | "Muted"
   | "Other";
-type InterfaceMode = "Light" | "Dark" | "Both";
+type InterfaceMode = "Light" | "Dark";
 type PaletteCombination =
   | "Complementary"
   | "Monochromatic"
@@ -751,14 +751,12 @@ function TokenPreview({
   primaryColor?: string;
   onPrimaryColorChange?: (next: string) => void;
 }) {
-  const [bothPreviewMode, setBothPreviewMode] = useState<"Light" | "Dark">("Light");
   const scales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const primary = tokens.colors["primary/500"];
   const secondary = tokens.colors["secondary/500"];
   const neutral900 = tokens.colors["neutral/900"];
   const neutral100 = tokens.colors["neutral/100"];
-  const activeMode: InterfaceMode =
-    mode === "Both" ? bothPreviewMode : ((mode || "Dark") as InterfaceMode);
+  const activeMode: InterfaceMode = (mode || "Dark") as InterfaceMode;
 
   return (
     <div className="space-y-6">
@@ -779,27 +777,6 @@ function TokenPreview({
             />
             <p className="text-xs text-slate-400">Changing primary updates generated palette by selected combination.</p>
           </div>
-          {mode === "Both" ? (
-            <div className="mt-4">
-              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-slate-400">Preview Mode</p>
-              <div className="flex gap-2">
-                {(["Light", "Dark"] as const).map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                      bothPreviewMode === opt
-                        ? "border-blue-400 bg-blue-500/20 text-blue-100"
-                        : "border-slate-700 bg-slate-900 text-slate-300"
-                    }`}
-                    onClick={() => setBothPreviewMode(opt)}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -1030,7 +1007,7 @@ export default function Home() {
             className="group rounded-3xl border border-slate-700/80 bg-slate-900/70 p-8 text-left transition duration-300 hover:-translate-y-0.5 hover:border-blue-400/60 hover:shadow-[0_12px_48px_rgba(59,130,246,0.15)]"
             onClick={() => {
               setMode("new");
-              setNewStep(1);
+              setNewStep(2);
               setNewTokens(null);
             }}
           >
@@ -1108,7 +1085,7 @@ export default function Home() {
           description="Multi-select. This influences typography scale and spacing."
           step={2}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(1)}
+          onBack={() => setMode("landing")}
           onNext={() => setNewStep(3)}
           nextDisabled={
             newData.designingFor.length === 0 ||
@@ -1497,7 +1474,7 @@ export default function Home() {
           nextDisabledReason={!newData.interfaceMode ? "Select an interface mode." : undefined}
         >
           <div className="flex flex-wrap gap-3">
-            {(["Light", "Dark", "Both"] as const).map((opt) => (
+            {(["Light", "Dark"] as const).map((opt) => (
               <button
                 key={opt}
                 className={`${chipBase} ${
@@ -1531,7 +1508,7 @@ export default function Home() {
           step={10}
           total={NEW_TOTAL_STEPS}
           onBack={() => setNewStep(9)}
-          onNext={() => setNewStep(11)}
+          onNext={() => setNewStep(12)}
           nextDisabled={
             !newData.typographyStyle ||
             (newData.typographyStyle === "Other" && !newData.typographyStyleOther.trim())
@@ -1571,32 +1548,13 @@ export default function Home() {
       );
     }
 
-    if (step === 11) {
-      return (
-        <StepShell
-          title="Font Preference (optional)"
-          step={11}
-          total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(10)}
-          onNext={() => setNewStep(12)}
-        >
-          <input
-            value={newData.fontPreference}
-            onChange={(e) => set({ fontPreference: e.target.value })}
-            placeholder="Inter, Helvetica, IBM Plex Sans"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
-          />
-        </StepShell>
-      );
-    }
-
     if (step === 12) {
       return (
         <StepShell
           title="Typography Scale Style"
           step={12}
           total={NEW_TOTAL_STEPS}
-          onBack={() => setNewStep(11)}
+          onBack={() => setNewStep(10)}
           onNext={() => setNewStep(13)}
           nextDisabled={!newData.typeScale}
           nextDisabledReason={!newData.typeScale ? "Select a scale style." : undefined}
@@ -2093,7 +2051,7 @@ export default function Home() {
         nextDisabledReason={!existingData.mode ? "Select interface mode." : undefined}
       >
         <div className="flex flex-wrap gap-3">
-          {(["Light", "Dark", "Both"] as const).map((opt) => (
+          {(["Light", "Dark"] as const).map((opt) => (
             <button
               key={opt}
               className={`${chipBase} ${
