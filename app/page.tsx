@@ -734,10 +734,121 @@ function StepShell({
   );
 }
 
-function TokenPreview({ tokens }: { tokens: DesignTokens }) {
+function TokenPreview({
+  tokens,
+  mode = "Dark",
+  primaryColor,
+  onPrimaryColorChange,
+}: {
+  tokens: DesignTokens;
+  mode?: InterfaceMode | "";
+  primaryColor?: string;
+  onPrimaryColorChange?: (next: string) => void;
+}) {
   const scales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
+  const primary = tokens.colors["primary/500"];
+  const secondary = tokens.colors["secondary/500"];
+  const neutral900 = tokens.colors["neutral/900"];
+  const neutral50 = tokens.colors["neutral/50"];
+  const neutral100 = tokens.colors["neutral/100"];
+  const previewModes: InterfaceMode[] = mode === "Both" ? ["Light", "Dark"] : [(mode || "Dark") as InterfaceMode];
+
   return (
     <div className="space-y-6">
+      {onPrimaryColorChange ? (
+        <div className="rounded-xl border border-slate-700/70 bg-slate-900 p-4">
+          <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">Preview Controls</h3>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              className="h-11 w-16 rounded-lg border border-slate-600 bg-slate-950"
+              value={primaryColor || primary}
+              onChange={(e) => onPrimaryColorChange(e.target.value)}
+            />
+            <input
+              value={primaryColor || primary}
+              onChange={(e) => onPrimaryColorChange(e.target.value)}
+              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-100 outline-none ring-blue-400 transition focus:ring"
+            />
+            <p className="text-xs text-slate-400">Changing primary updates generated palette by selected combination.</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div>
+        <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">Applied UI Preview</h3>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {previewModes.map((previewMode) => {
+            const isLight = previewMode === "Light";
+            const surfaceBg = isLight ? "#FFFFFF" : "#0B1220";
+            const cardBg = isLight ? "#F8FAFC" : "#111827";
+            const cardBorder = isLight ? "#E2E8F0" : "#334155";
+            const bodyText = isLight ? "#0F172A" : "#E2E8F0";
+            const mutedText = isLight ? "#475569" : "#94A3B8";
+
+            return (
+              <div
+                key={previewMode}
+                className="rounded-2xl border p-4"
+                style={{ background: surfaceBg, borderColor: cardBorder }}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs font-semibold tracking-[0.12em]" style={{ color: mutedText }}>
+                    {previewMode} MODE
+                  </span>
+                  <div className="flex gap-1.5">
+                    <span className="h-3 w-3 rounded-full" style={{ background: primary }} />
+                    <span className="h-3 w-3 rounded-full" style={{ background: secondary }} />
+                    <span className="h-3 w-3 rounded-full" style={{ background: neutral900 }} />
+                  </div>
+                </div>
+
+                <div
+                  className="rounded-xl border p-4"
+                  style={{ background: cardBg, borderColor: cardBorder, color: bodyText }}
+                >
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ fontFamily: `${tokens.fontFamily.primary}, sans-serif` }}
+                  >
+                    Design System Preview Card
+                  </p>
+                  <p
+                    className="mt-1 text-sm"
+                    style={{ color: mutedText, fontFamily: `${tokens.fontFamily.secondary}, serif` }}
+                  >
+                    Typography, color, and spacing tokens applied to a realistic UI block.
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      className="rounded-lg px-3 py-2 text-sm font-semibold"
+                      style={{ background: primary, color: neutral50 }}
+                    >
+                      Primary Action
+                    </button>
+                    <button
+                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      style={{ borderColor: secondary, color: secondary, background: "transparent" }}
+                    >
+                      Secondary
+                    </button>
+                  </div>
+
+                  <div
+                    className="mt-4 rounded-lg border p-3"
+                    style={{ borderColor: cardBorder, background: isLight ? "#FFFFFF" : "#0F172A" }}
+                  >
+                    <div className="mb-2 h-2 w-24 rounded" style={{ background: neutral100 }} />
+                    <div className="h-2 w-40 rounded" style={{ background: neutral100 }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div>
         <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">
           Color Palette (Primary, Secondary, Tertiary, Neutral)
@@ -878,7 +989,7 @@ export default function Home() {
         </header>
 
         <div className="rounded-3xl border border-slate-700/70 bg-slate-900/70 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:p-8">
-          <TokenPreview tokens={generatedTokens} />
+          <TokenPreview tokens={generatedTokens} mode={mode === "new" ? newData.interfaceMode : existingData.mode} />
           <div className="mt-8 rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4">
             <h3 className="text-sm font-semibold text-blue-100">Import Into Figma Variables</h3>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-200">
@@ -1601,7 +1712,17 @@ export default function Home() {
         onNext={() => setNewTokens(previewTokens)}
         nextLabel="Generate Design System"
       >
-        <TokenPreview tokens={previewTokens} />
+        <TokenPreview
+          tokens={previewTokens}
+          mode={newData.interfaceMode}
+          primaryColor={newData.primaryColor}
+          onPrimaryColorChange={(next) =>
+            set({
+              hasPrimaryColor: "Yes",
+              primaryColor: next,
+            })
+          }
+        />
       </StepShell>
     );
   }
@@ -1995,7 +2116,16 @@ export default function Home() {
       onNext={() => setExistingTokens(previewTokens)}
       nextLabel="Export JSON"
     >
-      <TokenPreview tokens={previewTokens} />
+      <TokenPreview
+        tokens={previewTokens}
+        mode={existingData.mode}
+        primaryColor={existingData.brandColors[0] || "#3b82f6"}
+        onPrimaryColorChange={(next) =>
+          set({
+            brandColors: [next, ...(existingData.brandColors.slice(1) || [])],
+          })
+        }
+      />
     </StepShell>
   );
 }
