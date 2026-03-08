@@ -254,21 +254,6 @@ function getSecondaryFromPrimary(primary: string): string {
   return shiftHue(primary, 34);
 }
 
-function hexToFigmaColorValue(hex: string): {
-  colorSpace: "srgb";
-  components: [number, number, number];
-  alpha: number;
-  hex: string;
-} {
-  const [r, g, b] = hexToRgb(hex);
-  return {
-    colorSpace: "srgb",
-    components: [r / 255, g / 255, b / 255],
-    alpha: 1,
-    hex: hex.toUpperCase(),
-  };
-}
-
 function pxToNumber(value: string): number {
   return Number.parseFloat(value.replace("px", ""));
 }
@@ -361,6 +346,7 @@ function getSpacingScale(pref: string): Record<string, string> {
         7: "20px",
         8: "24px",
         9: "32px",
+        10: "40px",
       };
     case "Spacious layout":
     case "Spacious":
@@ -374,6 +360,7 @@ function getSpacingScale(pref: string): Record<string, string> {
         7: "40px",
         8: "48px",
         9: "64px",
+        10: "80px",
       };
     case "Mobile-first spacing":
       return {
@@ -386,6 +373,7 @@ function getSpacingScale(pref: string): Record<string, string> {
         7: "24px",
         8: "32px",
         9: "40px",
+        10: "48px",
       };
     default:
       return {
@@ -398,6 +386,7 @@ function getSpacingScale(pref: string): Record<string, string> {
         7: "36px",
         8: "44px",
         9: "56px",
+        10: "72px",
       };
   }
 }
@@ -498,26 +487,18 @@ function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
 function toDtcgFigmaVariables(tokens: DesignTokens) {
   const colorScales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const colors = {
-    primary: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
-      (acc, scale) => {
-        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`primary/${scale}`]) };
-        return acc;
-      },
-      {},
-    ),
-    secondary: colorScales.reduce<
-      Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>
-    >((acc, scale) => {
-      acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`secondary/${scale}`]) };
+    primary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
+      acc[scale] = { $type: "color", $value: tokens.colors[`primary/${scale}`].toUpperCase() };
       return acc;
     }, {}),
-    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
-      (acc, scale) => {
-        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`neutral/${scale}`]) };
-        return acc;
-      },
-      {},
-    ),
+    secondary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
+      acc[scale] = { $type: "color", $value: tokens.colors[`secondary/${scale}`].toUpperCase() };
+      return acc;
+    }, {}),
+    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
+      acc[scale] = { $type: "color", $value: tokens.colors[`neutral/${scale}`].toUpperCase() };
+      return acc;
+    }, {}),
   };
 
   const fontSizes = Object.entries(tokens.fontSizes).reduce<Record<string, { $type: "number"; $value: number }>>(
@@ -535,6 +516,13 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
     },
     {},
   );
+  const spacingScale = Object.entries(tokens.spacingScale).reduce<Record<string, { $type: "number"; $value: number }>>(
+    (acc, [step, value]) => {
+      acc[step] = { $type: "number", $value: pxToNumber(value) };
+      return acc;
+    },
+    {},
+  );
 
   return {
     colors,
@@ -545,6 +533,9 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
       },
       fontSizes,
       lineHeights,
+    },
+    spacing: {
+      scale: spacingScale,
     },
   };
 }
@@ -691,7 +682,7 @@ function TokenPreview({ tokens }: { tokens: DesignTokens }) {
           <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">Spacing Scale</h3>
           <div className="space-y-2">
             {Object.entries(tokens.spacingScale)
-              .slice(0, 5)
+              .slice(0, 10)
               .map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between text-sm text-slate-300">
                   <span>space-{k}</span>
