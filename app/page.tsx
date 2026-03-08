@@ -619,7 +619,6 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
   );
 
   return {
-    color: colors,
     colors,
     typography: {
       fontFamily: {
