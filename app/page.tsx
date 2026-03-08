@@ -53,6 +53,12 @@ type ColorDirection =
   | "Muted"
   | "Other";
 type InterfaceMode = "Light" | "Dark" | "Both";
+type PaletteCombination =
+  | "Complementary"
+  | "Monochromatic"
+  | "Analogous"
+  | "Triadic"
+  | "Tetradic";
 type TypographyStyle =
   | "Modern Sans"
   | "Humanist Sans"
@@ -86,6 +92,7 @@ type NewBrandData = {
   feelingOther: string;
   colorDirection: ColorDirection | "";
   colorDirectionOther: string;
+  paletteCombination: PaletteCombination | "";
   hasPrimaryColor: "Yes" | "No" | "";
   primaryColor: string;
   interfaceMode: InterfaceMode | "";
@@ -108,6 +115,7 @@ type ExistingBrandData = {
   typeScale: TypeScale | "";
   spacingScale: "Compact" | "Balanced" | "Spacious" | "";
   mode: InterfaceMode | "";
+  paletteCombination: PaletteCombination | "";
 };
 
 type DesignTokens = {
@@ -122,8 +130,8 @@ type DesignTokens = {
   spacingScale: Record<string, string>;
 };
 
-const NEW_TOTAL_STEPS = 14;
-const EXISTING_TOTAL_STEPS = 9;
+const NEW_TOTAL_STEPS = 15;
+const EXISTING_TOTAL_STEPS = 10;
 
 const initialNewBrand: NewBrandData = {
   brandName: "",
@@ -137,6 +145,7 @@ const initialNewBrand: NewBrandData = {
   feelingOther: "",
   colorDirection: "",
   colorDirectionOther: "",
+  paletteCombination: "",
   hasPrimaryColor: "",
   primaryColor: "#3b82f6",
   interfaceMode: "",
@@ -159,6 +168,7 @@ const initialExistingBrand: ExistingBrandData = {
   typeScale: "",
   spacingScale: "",
   mode: "",
+  paletteCombination: "",
 };
 
 const chipBase =
@@ -281,6 +291,27 @@ function shiftHue(hex: string, shift: number): string {
 
 function getSecondaryFromPrimary(primary: string): string {
   return shiftHue(primary, 34);
+}
+
+function getHarmonyColors(
+  primary: string,
+  combination: PaletteCombination | "",
+): { secondary: string; tertiary: string } {
+  const base = primary || "#3b82f6";
+  switch (combination) {
+    case "Complementary":
+      return { secondary: shiftHue(base, 180), tertiary: shiftHue(base, 150) };
+    case "Monochromatic":
+      return { secondary: shade(base, 0.2), tertiary: tint(base, 0.3) };
+    case "Analogous":
+      return { secondary: shiftHue(base, 30), tertiary: shiftHue(base, -30) };
+    case "Triadic":
+      return { secondary: shiftHue(base, 120), tertiary: shiftHue(base, 240) };
+    case "Tetradic":
+      return { secondary: shiftHue(base, 90), tertiary: shiftHue(base, 180) };
+    default:
+      return { secondary: getSecondaryFromPrimary(base), tertiary: shiftHue(base, -34) };
+  }
 }
 
 function pxToNumber(value: string): number {
@@ -442,10 +473,12 @@ function getSpacingScale(pref: string): Record<string, string> {
 function buildPalette(
   primary: string,
   secondary: string,
+  tertiary: string,
   mode: InterfaceMode | "",
 ): Record<string, string> {
   const base = primary || "#3b82f6";
   const secondaryBase = secondary || getSecondaryFromPrimary(base);
+  const tertiaryBase = tertiary || shiftHue(base, -34);
   return {
     "primary/50": tint(base, 0.9),
     "primary/100": tint(base, 0.75),
@@ -467,6 +500,16 @@ function buildPalette(
     "secondary/700": shade(secondaryBase, 0.3),
     "secondary/800": shade(secondaryBase, 0.45),
     "secondary/900": shade(secondaryBase, 0.6),
+    "tertiary/50": tint(tertiaryBase, 0.9),
+    "tertiary/100": tint(tertiaryBase, 0.75),
+    "tertiary/200": tint(tertiaryBase, 0.55),
+    "tertiary/300": tint(tertiaryBase, 0.35),
+    "tertiary/400": tint(tertiaryBase, 0.18),
+    "tertiary/500": tertiaryBase,
+    "tertiary/600": shade(tertiaryBase, 0.15),
+    "tertiary/700": shade(tertiaryBase, 0.3),
+    "tertiary/800": shade(tertiaryBase, 0.45),
+    "tertiary/900": shade(tertiaryBase, 0.6),
     "neutral/50": mode === "Light" ? "#f8fafc" : "#e2e8f0",
     "neutral/100": mode === "Light" ? "#f1f5f9" : "#cbd5e1",
     "neutral/200": mode === "Light" ? "#e2e8f0" : "#94a3b8",
@@ -483,10 +526,10 @@ function buildPalette(
 function generateTokensFromNew(data: NewBrandData): DesignTokens {
   const baseColor =
     data.hasPrimaryColor === "Yes" ? data.primaryColor : getPrimaryFromDirection(data.colorDirection);
-  const secondaryColor = getSecondaryFromPrimary(baseColor);
+  const harmony = getHarmonyColors(baseColor, data.paletteCombination);
   const fontSizes = getTypeScale(data.typeScale);
   return {
-    colors: buildPalette(baseColor, secondaryColor, data.interfaceMode),
+    colors: buildPalette(baseColor, harmony.secondary, harmony.tertiary, data.interfaceMode),
     fontFamily: {
       primary: getFontFromStyle(data.typographyStyle, data.fontPreference),
       secondary: data.typographyStyle === "Serif" ? "Inter" : "Merriweather",
@@ -503,10 +546,12 @@ function generateTokensFromNew(data: NewBrandData): DesignTokens {
 
 function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
   const primary = data.brandColors[0] || "#3b82f6";
-  const secondary = data.brandColors[1] || getSecondaryFromPrimary(primary);
+  const harmony = getHarmonyColors(primary, data.paletteCombination);
+  const secondary = data.brandColors[1] || harmony.secondary;
+  const tertiary = data.brandColors[2] || harmony.tertiary;
   const fontSizes = getTypeScale(data.typeScale);
   return {
-    colors: buildPalette(primary, secondary, data.mode),
+    colors: buildPalette(primary, secondary, tertiary, data.mode),
     fontFamily: {
       primary: data.primaryFontFamily || "Inter",
       secondary: data.secondaryFontFamily || "Merriweather",
@@ -534,6 +579,13 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
       acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`secondary/${scale}`]) };
       return acc;
     }, {}),
+    tertiary: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
+      (acc, scale) => {
+        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`tertiary/${scale}`]) };
+        return acc;
+      },
+      {},
+    ),
     neutral: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
       (acc, scale) => {
         acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`neutral/${scale}`]) };
@@ -689,10 +741,10 @@ function TokenPreview({ tokens }: { tokens: DesignTokens }) {
     <div className="space-y-6">
       <div>
         <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">
-          Color Palette (Primary, Secondary, Neutral)
+          Color Palette (Primary, Secondary, Tertiary, Neutral)
         </h3>
         <div className="space-y-3">
-          {["primary", "secondary", "neutral"].map((group) => (
+          {["primary", "secondary", "tertiary", "neutral"].map((group) => (
             <div key={group} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
               <div className="mb-2 text-xs uppercase tracking-[0.12em] text-slate-300">{group}</div>
               <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
@@ -824,6 +876,15 @@ export default function Home() {
 
         <div className="rounded-3xl border border-slate-700/70 bg-slate-900/70 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:p-8">
           <TokenPreview tokens={generatedTokens} />
+          <div className="mt-8 rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4">
+            <h3 className="text-sm font-semibold text-blue-100">Import Into Figma Variables</h3>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-200">
+              <li>Click Download JSON.</li>
+              <li>In Figma, open Variables panel.</li>
+              <li>Select Import variables from JSON.</li>
+              <li>Choose the downloaded <code>figma-variables.json</code> file.</li>
+            </ol>
+          </div>
           <div className="mt-8">
             <JsonPanel tokens={generatedTokens} />
           </div>
@@ -839,7 +900,7 @@ export default function Home() {
           <h1 className="text-balance text-4xl font-semibold tracking-tight text-slate-50 sm:text-5xl">
             Design System Generator
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-slate-400">
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-white sm:text-xl">
             Generate color, typography, and spacing systems, then export JSON compatible with Figma variables.
           </p>
         </div>
@@ -857,7 +918,7 @@ export default function Home() {
               <IconNew />
             </div>
             <h2 className="text-2xl font-semibold text-slate-100">New Brand</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-base text-slate-100">
               Start a design system from scratch using guided questions.
             </p>
           </button>
@@ -876,7 +937,7 @@ export default function Home() {
               <IconImport />
             </div>
             <h2 className="text-2xl font-semibold text-slate-100">Existing Brand</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-base text-slate-100">
               Import brand colors and fonts to generate a design system.
             </p>
           </button>
