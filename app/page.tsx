@@ -198,9 +198,25 @@ function toSixDigitHex(value: string): string {
       .split("")
       .map((ch) => `${ch}${ch}`)
       .join("")
-      .toLowerCase()}`;
+      .toUpperCase()}`;
   }
-  return `#${cleaned.toLowerCase()}`;
+  return `#${cleaned.toUpperCase()}`;
+}
+
+function hexToFigmaColorValue(hex: string): {
+  colorSpace: "srgb";
+  components: [number, number, number];
+  alpha: number;
+  hex: string;
+} {
+  const strictHex = toSixDigitHex(hex);
+  const [r, g, b] = hexToRgb(strictHex);
+  return {
+    colorSpace: "srgb",
+    components: [r / 255, g / 255, b / 255],
+    alpha: 1,
+    hex: strictHex,
+  };
 }
 
 function extractHexColors(input: string): string[] {
@@ -505,18 +521,26 @@ function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
 function toDtcgFigmaVariables(tokens: DesignTokens) {
   const colorScales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const colors = {
-    primary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: toSixDigitHex(tokens.colors[`primary/${scale}`]) };
+    primary: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
+      (acc, scale) => {
+        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`primary/${scale}`]) };
+        return acc;
+      },
+      {},
+    ),
+    secondary: colorScales.reduce<
+      Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>
+    >((acc, scale) => {
+      acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`secondary/${scale}`]) };
       return acc;
     }, {}),
-    secondary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: toSixDigitHex(tokens.colors[`secondary/${scale}`]) };
-      return acc;
-    }, {}),
-    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: toSixDigitHex(tokens.colors[`neutral/${scale}`]) };
-      return acc;
-    }, {}),
+    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: ReturnType<typeof hexToFigmaColorValue> }>>(
+      (acc, scale) => {
+        acc[scale] = { $type: "color", $value: hexToFigmaColorValue(tokens.colors[`neutral/${scale}`]) };
+        return acc;
+      },
+      {},
+    ),
   };
 
   const fontSizes = Object.entries(tokens.fontSizes).reduce<Record<string, { $type: "number"; $value: number }>>(
