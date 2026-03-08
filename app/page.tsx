@@ -183,6 +183,21 @@ function rgbToHex(r: number, g: number, b: number): string {
     .join("")}`;
 }
 
+function normalizeHex(value: string): string | null {
+  const cleaned = value.trim().replace(/[^0-9a-fA-F]/g, "");
+  if (!cleaned) return null;
+  if (cleaned.length === 3 || cleaned.length === 6) return `#${cleaned.toLowerCase()}`;
+  return null;
+}
+
+function extractHexColors(input: string): string[] {
+  const matches = input.match(/#?[0-9a-fA-F]{3,6}\b/g) ?? [];
+  const valid = matches
+    .map((entry) => normalizeHex(entry))
+    .filter((entry): entry is string => entry !== null);
+  return [...new Set(valid)];
+}
+
 function tint(hex: string, amount: number): string {
   const [r, g, b] = hexToRgb(hex);
   return rgbToHex(
@@ -195,6 +210,48 @@ function tint(hex: string, amount: number): string {
 function shade(hex: string, amount: number): string {
   const [r, g, b] = hexToRgb(hex);
   return rgbToHex(r * (1 - amount), g * (1 - amount), b * (1 - amount));
+}
+
+function shiftHue(hex: string, shift: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const delta = max - min;
+  let h = 0;
+  const l = (max + min) / 2;
+  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+
+  if (delta !== 0) {
+    if (max === rNorm) h = ((gNorm - bNorm) / delta) % 6;
+    else if (max === gNorm) h = (bNorm - rNorm) / delta + 2;
+    else h = (rNorm - gNorm) / delta + 4;
+    h *= 60;
+  }
+
+  let newHue = (h + shift) % 360;
+  if (newHue < 0) newHue += 360;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((newHue / 60) % 2) - 1));
+  const m = l - c / 2;
+
+  let r1 = 0;
+  let g1 = 0;
+  let b1 = 0;
+  if (newHue < 60) [r1, g1, b1] = [c, x, 0];
+  else if (newHue < 120) [r1, g1, b1] = [x, c, 0];
+  else if (newHue < 180) [r1, g1, b1] = [0, c, x];
+  else if (newHue < 240) [r1, g1, b1] = [0, x, c];
+  else if (newHue < 300) [r1, g1, b1] = [x, 0, c];
+  else [r1, g1, b1] = [c, 0, x];
+
+  return rgbToHex((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255);
+}
+
+function getSecondaryFromPrimary(primary: string): string {
+  return shiftHue(primary, 34);
 }
 
 function getPrimaryFromDirection(direction: string): string {
@@ -326,8 +383,13 @@ function getSpacingScale(pref: string): Record<string, string> {
   }
 }
 
-function buildPalette(primary: string, mode: InterfaceMode | ""): Record<string, string> {
+function buildPalette(
+  primary: string,
+  secondary: string,
+  mode: InterfaceMode | "",
+): Record<string, string> {
   const base = primary || "#3b82f6";
+  const secondaryBase = secondary || getSecondaryFromPrimary(base);
   const neutralBase = mode === "Light" ? "#0f172a" : "#f8fafc";
   return {
     "brand/50": tint(base, 0.9),
@@ -340,6 +402,26 @@ function buildPalette(primary: string, mode: InterfaceMode | ""): Record<string,
     "brand/700": shade(base, 0.3),
     "brand/800": shade(base, 0.45),
     "brand/900": shade(base, 0.6),
+    "secondary/50": tint(secondaryBase, 0.9),
+    "secondary/100": tint(secondaryBase, 0.75),
+    "secondary/200": tint(secondaryBase, 0.55),
+    "secondary/300": tint(secondaryBase, 0.35),
+    "secondary/400": tint(secondaryBase, 0.18),
+    "secondary/500": secondaryBase,
+    "secondary/600": shade(secondaryBase, 0.15),
+    "secondary/700": shade(secondaryBase, 0.3),
+    "secondary/800": shade(secondaryBase, 0.45),
+    "secondary/900": shade(secondaryBase, 0.6),
+    "neutral/dark/50": "#e2e8f0",
+    "neutral/dark/100": "#cbd5e1",
+    "neutral/dark/200": "#94a3b8",
+    "neutral/dark/300": "#64748b",
+    "neutral/dark/400": "#475569",
+    "neutral/dark/500": "#334155",
+    "neutral/dark/600": "#1e293b",
+    "neutral/dark/700": "#0f172a",
+    "neutral/dark/800": "#0b1220",
+    "neutral/dark/900": "#020617",
     "surface/background": mode === "Light" ? "#f8fafc" : "#090c11",
     "surface/card": mode === "Light" ? "#ffffff" : "#121824",
     "text/primary": neutralBase,
@@ -351,8 +433,9 @@ function buildPalette(primary: string, mode: InterfaceMode | ""): Record<string,
 function generateTokensFromNew(data: NewBrandData): DesignTokens {
   const baseColor =
     data.hasPrimaryColor === "Yes" ? data.primaryColor : getPrimaryFromDirection(data.colorDirection);
+  const secondaryColor = getSecondaryFromPrimary(baseColor);
   return {
-    colors: buildPalette(baseColor, data.interfaceMode),
+    colors: buildPalette(baseColor, secondaryColor, data.interfaceMode),
     fontFamily: {
       primary: getFontFromStyle(data.typographyStyle, data.fontPreference),
       secondary: data.typographyStyle === "Serif" ? "Inter" : "Merriweather",
@@ -377,9 +460,10 @@ function generateTokensFromNew(data: NewBrandData): DesignTokens {
 
 function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
   const primary = data.brandColors[0] || "#3b82f6";
+  const secondary = data.brandColors[1] || getSecondaryFromPrimary(primary);
   return {
     colors: {
-      ...buildPalette(primary, data.mode),
+      ...buildPalette(primary, secondary, data.mode),
       ...data.brandColors.reduce<Record<string, string>>((acc, color, i) => {
         acc[`brand/custom-${i + 1}`] = color;
         return acc;
@@ -595,6 +679,8 @@ export default function Home() {
   const [existingStep, setExistingStep] = useState(1);
   const [existingData, setExistingData] = useState<ExistingBrandData>(initialExistingBrand);
   const [existingTokens, setExistingTokens] = useState<DesignTokens | null>(null);
+  const [existingImportText, setExistingImportText] = useState("");
+  const [existingImportError, setExistingImportError] = useState("");
 
   const generatedTokens = newTokens || existingTokens;
 
@@ -669,6 +755,8 @@ export default function Home() {
               setMode("existing");
               setExistingStep(1);
               setExistingTokens(null);
+              setExistingImportText("");
+              setExistingImportError("");
             }}
           >
             <div className="mb-4 inline-flex rounded-xl border border-slate-700 bg-slate-950 p-2">
@@ -1251,6 +1339,42 @@ export default function Home() {
         onNext={() => setExistingStep(3)}
       >
         <div className="space-y-3">
+          <div className="rounded-xl border border-slate-700/80 bg-slate-950/70 p-3">
+            <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              Paste HEX colors (comma, space, or newline separated)
+            </label>
+            <textarea
+              value={existingImportText}
+              onChange={(e) => setExistingImportText(e.target.value)}
+              placeholder="#3b82f6, #22c55e, #f97316"
+              className="h-20 w-full resize-none rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-blue-400 transition focus:ring"
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const imported = extractHexColors(existingImportText);
+                  if (imported.length === 0) {
+                    setExistingImportError("No valid HEX colors found.");
+                    return;
+                  }
+                  const merged = [...new Set([...existingData.brandColors, ...imported])].slice(0, 12);
+                  set({ brandColors: merged });
+                  setExistingImportError("");
+                  setExistingImportText("");
+                }}
+                className="rounded-lg border border-blue-400/40 bg-blue-500/20 px-3 py-1.5 text-xs font-semibold text-blue-100"
+              >
+                Import Colors
+              </button>
+              {existingImportError ? (
+                <span className="text-xs text-rose-300">{existingImportError}</span>
+              ) : (
+                <span className="text-xs text-slate-500">Up to 12 colors</span>
+              )}
+            </div>
+          </div>
+
           {existingData.brandColors.map((color, index) => (
             <div key={`${color}-${index}`} className="flex items-center gap-3">
               <input
@@ -1269,6 +1393,17 @@ export default function Home() {
                   const next = [...existingData.brandColors];
                   next[index] = e.target.value;
                   set({ brandColors: next });
+                }}
+                onBlur={(e) => {
+                  const normalized = normalizeHex(e.target.value);
+                  if (!normalized) {
+                    setExistingImportError(`Invalid HEX at row ${index + 1}.`);
+                    return;
+                  }
+                  const next = [...existingData.brandColors];
+                  next[index] = normalized;
+                  set({ brandColors: next });
+                  setExistingImportError("");
                 }}
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-slate-100 outline-none ring-blue-400 transition focus:ring"
               />
