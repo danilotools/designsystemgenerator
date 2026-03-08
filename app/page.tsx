@@ -318,6 +318,12 @@ function pxToNumber(value: string): number {
   return Number.parseFloat(value.replace("px", ""));
 }
 
+function getReadableTextColor(bgHex: string): string {
+  const [r, g, b] = hexToRgb(bgHex);
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance > 0.6 ? "#0F172A" : "#F8FAFC";
+}
+
 function getPrimaryFromDirection(direction: string): string {
   switch (direction) {
     case "Warm":
@@ -745,13 +751,14 @@ function TokenPreview({
   primaryColor?: string;
   onPrimaryColorChange?: (next: string) => void;
 }) {
+  const [bothPreviewMode, setBothPreviewMode] = useState<"Light" | "Dark">("Light");
   const scales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const primary = tokens.colors["primary/500"];
   const secondary = tokens.colors["secondary/500"];
   const neutral900 = tokens.colors["neutral/900"];
-  const neutral50 = tokens.colors["neutral/50"];
   const neutral100 = tokens.colors["neutral/100"];
-  const previewModes: InterfaceMode[] = mode === "Both" ? ["Light", "Dark"] : [(mode || "Dark") as InterfaceMode];
+  const activeMode: InterfaceMode =
+    mode === "Both" ? bothPreviewMode : ((mode || "Dark") as InterfaceMode);
 
   return (
     <div className="space-y-6">
@@ -772,81 +779,80 @@ function TokenPreview({
             />
             <p className="text-xs text-slate-400">Changing primary updates generated palette by selected combination.</p>
           </div>
+          {mode === "Both" ? (
+            <div className="mt-4">
+              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-slate-400">Preview Mode</p>
+              <div className="flex gap-2">
+                {(["Light", "Dark"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                      bothPreviewMode === opt
+                        ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                        : "border-slate-700 bg-slate-900 text-slate-300"
+                    }`}
+                    onClick={() => setBothPreviewMode(opt)}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       <div>
         <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">Applied UI Preview</h3>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {previewModes.map((previewMode) => {
-            const isLight = previewMode === "Light";
-            const surfaceBg = isLight ? "#FFFFFF" : "#0B1220";
-            const cardBg = isLight ? "#F8FAFC" : "#111827";
-            const cardBorder = isLight ? "#E2E8F0" : "#334155";
-            const bodyText = isLight ? "#0F172A" : "#E2E8F0";
-            const mutedText = isLight ? "#475569" : "#94A3B8";
+        {(() => {
+          const isLight = activeMode === "Light";
+          const surfaceBg = isLight ? "#FFFFFF" : "#0B1220";
+          const cardBg = isLight ? "#F8FAFC" : "#111827";
+          const cardBorder = isLight ? "#E2E8F0" : "#334155";
+          const bodyText = isLight ? "#0F172A" : "#E2E8F0";
+          const mutedText = isLight ? "#475569" : "#94A3B8";
+          const primaryText = getReadableTextColor(primary);
+          const secondaryText = getReadableTextColor(secondary);
 
-            return (
-              <div
-                key={previewMode}
-                className="rounded-2xl border p-4"
-                style={{ background: surfaceBg, borderColor: cardBorder }}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-semibold tracking-[0.12em]" style={{ color: mutedText }}>
-                    {previewMode} MODE
-                  </span>
-                  <div className="flex gap-1.5">
-                    <span className="h-3 w-3 rounded-full" style={{ background: primary }} />
-                    <span className="h-3 w-3 rounded-full" style={{ background: secondary }} />
-                    <span className="h-3 w-3 rounded-full" style={{ background: neutral900 }} />
-                  </div>
-                </div>
-
-                <div
-                  className="rounded-xl border p-4"
-                  style={{ background: cardBg, borderColor: cardBorder, color: bodyText }}
-                >
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ fontFamily: `${tokens.fontFamily.primary}, sans-serif` }}
-                  >
-                    Design System Preview Card
-                  </p>
-                  <p
-                    className="mt-1 text-sm"
-                    style={{ color: mutedText, fontFamily: `${tokens.fontFamily.secondary}, serif` }}
-                  >
-                    Typography, color, and spacing tokens applied to a realistic UI block.
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      className="rounded-lg px-3 py-2 text-sm font-semibold"
-                      style={{ background: primary, color: neutral50 }}
-                    >
-                      Primary Action
-                    </button>
-                    <button
-                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
-                      style={{ borderColor: secondary, color: secondary, background: "transparent" }}
-                    >
-                      Secondary
-                    </button>
-                  </div>
-
-                  <div
-                    className="mt-4 rounded-lg border p-3"
-                    style={{ borderColor: cardBorder, background: isLight ? "#FFFFFF" : "#0F172A" }}
-                  >
-                    <div className="mb-2 h-2 w-24 rounded" style={{ background: neutral100 }} />
-                    <div className="h-2 w-40 rounded" style={{ background: neutral100 }} />
-                  </div>
+          return (
+            <div className="rounded-2xl border p-4" style={{ background: surfaceBg, borderColor: cardBorder }}>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-semibold tracking-[0.12em]" style={{ color: mutedText }}>
+                  {activeMode} MODE
+                </span>
+                <div className="flex gap-1.5">
+                  <span className="h-3 w-3 rounded-full" style={{ background: primary }} />
+                  <span className="h-3 w-3 rounded-full" style={{ background: secondary }} />
+                  <span className="h-3 w-3 rounded-full" style={{ background: neutral900 }} />
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="rounded-xl border p-4" style={{ background: cardBg, borderColor: cardBorder, color: bodyText }}>
+                <p className="text-sm font-semibold" style={{ fontFamily: `${tokens.fontFamily.primary}, sans-serif` }}>
+                  Design System Preview Card
+                </p>
+                <p className="mt-1 text-sm" style={{ color: mutedText, fontFamily: `${tokens.fontFamily.secondary}, serif` }}>
+                  Typography, color, and spacing tokens applied to a realistic UI block.
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button className="rounded-lg px-3 py-2 text-sm font-semibold" style={{ background: primary, color: primaryText }}>
+                    Primary Action
+                  </button>
+                  <button className="rounded-lg px-3 py-2 text-sm font-semibold" style={{ background: secondary, color: secondaryText }}>
+                    Secondary
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-lg border p-3" style={{ borderColor: cardBorder, background: isLight ? "#FFFFFF" : "#0F172A" }}>
+                  <div className="mb-2 h-2 w-24 rounded" style={{ background: neutral100 }} />
+                  <div className="h-2 w-40 rounded" style={{ background: neutral100 }} />
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <div>
@@ -1715,7 +1721,7 @@ export default function Home() {
         <TokenPreview
           tokens={previewTokens}
           mode={newData.interfaceMode}
-          primaryColor={newData.primaryColor}
+          primaryColor={previewTokens.colors["primary/500"]}
           onPrimaryColorChange={(next) =>
             set({
               hasPrimaryColor: "Yes",
@@ -2119,7 +2125,7 @@ export default function Home() {
       <TokenPreview
         tokens={previewTokens}
         mode={existingData.mode}
-        primaryColor={existingData.brandColors[0] || "#3b82f6"}
+        primaryColor={previewTokens.colors["primary/500"]}
         onPrimaryColorChange={(next) =>
           set({
             brandColors: [next, ...(existingData.brandColors.slice(1) || [])],
