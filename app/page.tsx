@@ -791,7 +791,11 @@ function TokenPreview({ tokens }: { tokens: DesignTokens }) {
 }
 
 function JsonPanel({ tokens }: { tokens: DesignTokens }) {
-  const figmaJson = useMemo(() => toDtcgFigmaVariables(tokens), [tokens]);
+  const figmaJson = useMemo(() => {
+    const next = toDtcgFigmaVariables(tokens) as Record<string, unknown>;
+    if ("color" in next) delete next.color;
+    return next;
+  }, [tokens]);
   const json = useMemo(() => JSON.stringify(figmaJson, null, 2), [figmaJson]);
 
   function downloadJson() {
@@ -799,7 +803,7 @@ function JsonPanel({ tokens }: { tokens: DesignTokens }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "figma-variables.json";
+    a.download = "figma-variables-colors.json";
     a.click();
     URL.revokeObjectURL(url);
   }
