@@ -254,6 +254,10 @@ function getSecondaryFromPrimary(primary: string): string {
   return shiftHue(primary, 34);
 }
 
+function pxToNumber(value: string): number {
+  return Number.parseFloat(value.replace("px", ""));
+}
+
 function getPrimaryFromDirection(direction: string): string {
   switch (direction) {
     case "Warm":
@@ -390,18 +394,17 @@ function buildPalette(
 ): Record<string, string> {
   const base = primary || "#3b82f6";
   const secondaryBase = secondary || getSecondaryFromPrimary(base);
-  const neutralBase = mode === "Light" ? "#0f172a" : "#f8fafc";
   return {
-    "brand/50": tint(base, 0.9),
-    "brand/100": tint(base, 0.75),
-    "brand/200": tint(base, 0.55),
-    "brand/300": tint(base, 0.35),
-    "brand/400": tint(base, 0.18),
-    "brand/500": base,
-    "brand/600": shade(base, 0.15),
-    "brand/700": shade(base, 0.3),
-    "brand/800": shade(base, 0.45),
-    "brand/900": shade(base, 0.6),
+    "primary/50": tint(base, 0.9),
+    "primary/100": tint(base, 0.75),
+    "primary/200": tint(base, 0.55),
+    "primary/300": tint(base, 0.35),
+    "primary/400": tint(base, 0.18),
+    "primary/500": base,
+    "primary/600": shade(base, 0.15),
+    "primary/700": shade(base, 0.3),
+    "primary/800": shade(base, 0.45),
+    "primary/900": shade(base, 0.6),
     "secondary/50": tint(secondaryBase, 0.9),
     "secondary/100": tint(secondaryBase, 0.75),
     "secondary/200": tint(secondaryBase, 0.55),
@@ -412,21 +415,16 @@ function buildPalette(
     "secondary/700": shade(secondaryBase, 0.3),
     "secondary/800": shade(secondaryBase, 0.45),
     "secondary/900": shade(secondaryBase, 0.6),
-    "neutral/dark/50": "#e2e8f0",
-    "neutral/dark/100": "#cbd5e1",
-    "neutral/dark/200": "#94a3b8",
-    "neutral/dark/300": "#64748b",
-    "neutral/dark/400": "#475569",
-    "neutral/dark/500": "#334155",
-    "neutral/dark/600": "#1e293b",
-    "neutral/dark/700": "#0f172a",
-    "neutral/dark/800": "#0b1220",
-    "neutral/dark/900": "#020617",
-    "surface/background": mode === "Light" ? "#f8fafc" : "#090c11",
-    "surface/card": mode === "Light" ? "#ffffff" : "#121824",
-    "text/primary": neutralBase,
-    "text/secondary": mode === "Light" ? "#334155" : "#cbd5e1",
-    "border/default": mode === "Light" ? "#dbe4f0" : "#2b3951",
+    "neutral/50": mode === "Light" ? "#f8fafc" : "#e2e8f0",
+    "neutral/100": mode === "Light" ? "#f1f5f9" : "#cbd5e1",
+    "neutral/200": mode === "Light" ? "#e2e8f0" : "#94a3b8",
+    "neutral/300": mode === "Light" ? "#cbd5e1" : "#64748b",
+    "neutral/400": mode === "Light" ? "#94a3b8" : "#475569",
+    "neutral/500": mode === "Light" ? "#64748b" : "#334155",
+    "neutral/600": mode === "Light" ? "#475569" : "#1e293b",
+    "neutral/700": mode === "Light" ? "#334155" : "#0f172a",
+    "neutral/800": mode === "Light" ? "#1e293b" : "#0b1220",
+    "neutral/900": mode === "Light" ? "#0f172a" : "#020617",
   };
 }
 
@@ -462,13 +460,7 @@ function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
   const primary = data.brandColors[0] || "#3b82f6";
   const secondary = data.brandColors[1] || getSecondaryFromPrimary(primary);
   return {
-    colors: {
-      ...buildPalette(primary, secondary, data.mode),
-      ...data.brandColors.reduce<Record<string, string>>((acc, color, i) => {
-        acc[`brand/custom-${i + 1}`] = color;
-        return acc;
-      }, {}),
-    },
+    colors: buildPalette(primary, secondary, data.mode),
     fontFamily: {
       primary: data.primaryFontFamily || "Inter",
       secondary: data.secondaryFontFamily || "Merriweather",
@@ -485,6 +477,51 @@ function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
     },
     fontWeights: { regular: 400, medium: 500, semibold: 600, bold: 700 },
     spacingScale: getSpacingScale(data.spacingScale),
+  };
+}
+
+function toDtcgFigmaVariables(tokens: DesignTokens) {
+  const colorScales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
+  const colors = {
+    primary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
+      acc[scale] = { $type: "color", $value: tokens.colors[`primary/${scale}`].toUpperCase() };
+      return acc;
+    }, {}),
+    secondary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
+      acc[scale] = { $type: "color", $value: tokens.colors[`secondary/${scale}`].toUpperCase() };
+      return acc;
+    }, {}),
+    neutral: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
+      acc[scale] = { $type: "color", $value: tokens.colors[`neutral/${scale}`].toUpperCase() };
+      return acc;
+    }, {}),
+  };
+
+  const fontSizes = Object.entries(tokens.fontSizes).reduce<
+    Record<string, { $type: "dimension"; $value: { value: number; unit: "px" } }>
+  >((acc, [size, value]) => {
+    acc[size] = { $type: "dimension", $value: { value: pxToNumber(value), unit: "px" } };
+    return acc;
+  }, {});
+
+  const lineHeights = Object.entries(tokens.lineHeights).reduce<Record<string, { $type: "number"; $value: number }>>(
+    (acc, [size, value]) => {
+      acc[size] = { $type: "number", $value: Number.parseFloat(value) };
+      return acc;
+    },
+    {},
+  );
+
+  return {
+    color: colors,
+    font: {
+      family: {
+        primary: { $type: "fontFamily", $value: tokens.fontFamily.primary },
+        secondary: { $type: "fontFamily", $value: tokens.fontFamily.secondary },
+      },
+      size: fontSizes,
+      lineHeight: lineHeights,
+    },
   };
 }
 
@@ -583,20 +620,31 @@ function StepShell({
 }
 
 function TokenPreview({ tokens }: { tokens: DesignTokens }) {
+  const scales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">Color Palette</h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {Object.entries(tokens.colors)
-            .slice(0, 10)
-            .map(([key, value]) => (
-              <div key={key} className="rounded-xl border border-slate-700/70 bg-slate-900 p-2">
-                <div className="h-12 rounded-md" style={{ background: value }} />
-                <div className="mt-2 text-xs text-slate-200">{key}</div>
-                <div className="text-[11px] text-slate-400">{value}</div>
+        <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">
+          Color Palette (Primary, Secondary, Neutral)
+        </h3>
+        <div className="space-y-3">
+          {["primary", "secondary", "neutral"].map((group) => (
+            <div key={group} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
+              <div className="mb-2 text-xs uppercase tracking-[0.12em] text-slate-300">{group}</div>
+              <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+                {scales.map((scale) => {
+                  const key = `${group}/${scale}`;
+                  const value = tokens.colors[key];
+                  return (
+                    <div key={key} className="rounded-md border border-slate-700/70 p-1">
+                      <div className="h-7 rounded-sm" style={{ background: value }} />
+                      <div className="mt-1 text-[10px] text-slate-400">{scale}</div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -628,14 +676,15 @@ function TokenPreview({ tokens }: { tokens: DesignTokens }) {
 }
 
 function JsonPanel({ tokens }: { tokens: DesignTokens }) {
-  const json = useMemo(() => JSON.stringify(tokens, null, 2), [tokens]);
+  const figmaJson = useMemo(() => toDtcgFigmaVariables(tokens), [tokens]);
+  const json = useMemo(() => JSON.stringify(figmaJson, null, 2), [figmaJson]);
 
   function downloadJson() {
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "design-system-tokens.json";
+    a.download = "figma-variables.json";
     a.click();
     URL.revokeObjectURL(url);
   }
