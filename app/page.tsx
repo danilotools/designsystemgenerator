@@ -190,6 +190,19 @@ function normalizeHex(value: string): string | null {
   return null;
 }
 
+function toSixDigitHex(value: string): string {
+  const normalized = normalizeHex(value) ?? "#3b82f6";
+  const cleaned = normalized.replace("#", "");
+  if (cleaned.length === 3) {
+    return `#${cleaned
+      .split("")
+      .map((ch) => `${ch}${ch}`)
+      .join("")
+      .toUpperCase()}`;
+  }
+  return `#${cleaned.toUpperCase()}`;
+}
+
 function extractHexColors(input: string): string[] {
   const matches = input.match(/#?[0-9a-fA-F]{3,6}\b/g) ?? [];
   const valid = matches
@@ -343,11 +356,9 @@ function getTypeScale(style: string): Record<string, string> {
 function getLineHeightsFromSizes(fontSizes: Record<string, string>): Record<string, string> {
   return Object.entries(fontSizes).reduce<Record<string, string>>((acc, [key, value]) => {
     const px = pxToNumber(value);
-    if (px <= 14) acc[key] = "1.5";
-    else if (px <= 18) acc[key] = "1.45";
-    else if (px <= 28) acc[key] = "1.35";
-    else if (px <= 44) acc[key] = "1.25";
-    else acc[key] = "1.15";
+    const ratio = px >= 48 ? 1.16 : px >= 32 ? 1.2 : px >= 20 ? 1.3 : 1.4;
+    const rounded = Math.ceil((px * ratio) / 4) * 4;
+    acc[key] = String(rounded);
     return acc;
   }, {});
 }
@@ -495,15 +506,15 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
   const colorScales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const colors = {
     primary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: tokens.colors[`primary/${scale}`].toUpperCase() };
+      acc[scale] = { $type: "color", $value: toSixDigitHex(tokens.colors[`primary/${scale}`]) };
       return acc;
     }, {}),
     secondary: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: tokens.colors[`secondary/${scale}`].toUpperCase() };
+      acc[scale] = { $type: "color", $value: toSixDigitHex(tokens.colors[`secondary/${scale}`]) };
       return acc;
     }, {}),
     neutral: colorScales.reduce<Record<string, { $type: "color"; $value: string }>>((acc, scale) => {
-      acc[scale] = { $type: "color", $value: tokens.colors[`neutral/${scale}`].toUpperCase() };
+      acc[scale] = { $type: "color", $value: toSixDigitHex(tokens.colors[`neutral/${scale}`]) };
       return acc;
     }, {}),
   };
@@ -532,6 +543,7 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
   );
 
   return {
+    color: colors,
     colors,
     typography: {
       fontFamily: {
