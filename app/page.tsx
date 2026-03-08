@@ -117,7 +117,7 @@ type DesignTokens = {
     secondary: string;
   };
   fontSizes: Record<string, string>;
-  lineHeights: Record<string, string>;
+  lineHeights: Record<string, number>;
   fontWeights: Record<string, number>;
   spacingScale: Record<string, string>;
 };
@@ -198,9 +198,9 @@ function toSixDigitHex(value: string): string {
       .split("")
       .map((ch) => `${ch}${ch}`)
       .join("")
-      .toUpperCase()}`;
+      .toLowerCase()}`;
   }
-  return `#${cleaned.toUpperCase()}`;
+  return `#${cleaned.toLowerCase()}`;
 }
 
 function extractHexColors(input: string): string[] {
@@ -353,12 +353,12 @@ function getTypeScale(style: string): Record<string, string> {
   };
 }
 
-function getLineHeightsFromSizes(fontSizes: Record<string, string>): Record<string, string> {
-  return Object.entries(fontSizes).reduce<Record<string, string>>((acc, [key, value]) => {
+function getLineHeightsFromSizes(fontSizes: Record<string, string>): Record<string, number> {
+  return Object.entries(fontSizes).reduce<Record<string, number>>((acc, [key, value]) => {
     const px = pxToNumber(value);
     const ratio = px >= 48 ? 1.16 : px >= 32 ? 1.2 : px >= 20 ? 1.3 : 1.4;
     const rounded = Math.ceil((px * ratio) / 4) * 4;
-    acc[key] = String(rounded);
+    acc[key] = rounded;
     return acc;
   }, {});
 }
@@ -529,7 +529,7 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
 
   const lineHeights = Object.entries(tokens.lineHeights).reduce<Record<string, { $type: "number"; $value: number }>>(
     (acc, [size, value]) => {
-      acc[size] = { $type: "number", $value: Number.parseFloat(value) };
+      acc[size] = { $type: "number", $value: value };
       return acc;
     },
     {},
@@ -543,7 +543,6 @@ function toDtcgFigmaVariables(tokens: DesignTokens) {
   );
 
   return {
-    color: colors,
     colors,
     typography: {
       fontFamily: {
