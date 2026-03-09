@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Mode = "landing" | "new" | "existing" | "playground";
 type AppTarget =
@@ -1022,6 +1022,35 @@ export default function Home() {
   const [playgroundData, setPlaygroundData] = useState<PlaygroundData>(initialPlayground);
   const [playgroundTokens, setPlaygroundTokens] = useState<DesignTokens | null>(null);
   const [playgroundFontSearch, setPlaygroundFontSearch] = useState("");
+  const [googleFontOptions, setGoogleFontOptions] = useState<string[]>(GOOGLE_FONT_OPTIONS);
+  const [fontsLoading, setFontsLoading] = useState(false);
+  const [fontsStatus, setFontsStatus] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGoogleFonts() {
+      setFontsLoading(true);
+      try {
+        const response = await fetch("/api/google-fonts", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to load fonts");
+        const data = (await response.json()) as { fonts?: string[]; source?: string };
+        if (!cancelled && Array.isArray(data.fonts) && data.fonts.length > 0) {
+          setGoogleFontOptions(data.fonts);
+          setFontsStatus(data.source === "google" ? "Loaded from Google Fonts API." : "Using fallback font list.");
+        }
+      } catch {
+        if (!cancelled) setFontsStatus("Using fallback font list.");
+      } finally {
+        if (!cancelled) setFontsLoading(false);
+      }
+    }
+
+    loadGoogleFonts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const generatedTokens = newTokens || existingTokens || playgroundTokens;
 
@@ -1799,7 +1828,7 @@ export default function Home() {
     const set = (patch: Partial<PlaygroundData>) =>
       setPlaygroundData((prev) => ({ ...prev, ...patch }));
     const previewTokens = generateTokensFromPlayground(playgroundData);
-    const filteredFonts = GOOGLE_FONT_OPTIONS.filter((font) =>
+    const filteredFonts = googleFontOptions.filter((font) =>
       font.toLowerCase().includes(playgroundFontSearch.toLowerCase()),
     ).slice(0, 12);
 
@@ -1927,6 +1956,9 @@ export default function Home() {
             placeholder="Search Google Fonts list (e.g. Inter, Manrope)"
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
           />
+          <p className="text-xs text-slate-400">
+            {fontsLoading ? "Loading fonts from Google Fonts API..." : fontsStatus || "Font list ready."}
+          </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <input
