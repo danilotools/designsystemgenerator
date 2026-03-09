@@ -1021,7 +1021,6 @@ export default function Home() {
   const [playgroundStep, setPlaygroundStep] = useState(1);
   const [playgroundData, setPlaygroundData] = useState<PlaygroundData>(initialPlayground);
   const [playgroundTokens, setPlaygroundTokens] = useState<DesignTokens | null>(null);
-  const [playgroundFontSearch, setPlaygroundFontSearch] = useState("");
   const [googleFontOptions, setGoogleFontOptions] = useState<string[]>(GOOGLE_FONT_OPTIONS);
   const [fontsLoading, setFontsLoading] = useState(false);
   const [fontsStatus, setFontsStatus] = useState("");
@@ -1828,9 +1827,6 @@ export default function Home() {
     const set = (patch: Partial<PlaygroundData>) =>
       setPlaygroundData((prev) => ({ ...prev, ...patch }));
     const previewTokens = generateTokensFromPlayground(playgroundData);
-    const filteredFonts = googleFontOptions.filter((font) =>
-      font.toLowerCase().includes(playgroundFontSearch.toLowerCase()),
-    ).slice(0, 12);
 
     if (step === 1) {
       return (
@@ -1950,52 +1946,37 @@ export default function Home() {
         nextLabel="Export JSON"
       >
         <div className="space-y-4">
-          <input
-            value={playgroundFontSearch}
-            onChange={(e) => setPlaygroundFontSearch(e.target.value)}
-            placeholder="Search Google Fonts list (e.g. Inter, Manrope)"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
-          />
           <p className="text-xs text-slate-400">
             {fontsLoading ? "Loading fonts from Google Fonts API..." : fontsStatus || "Font list ready."}
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <input
-              value={playgroundData.fontPrimary}
-              onChange={(e) => set({ fontPrimary: e.target.value })}
-              placeholder="Primary font"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100"
-            />
-            <input
-              value={playgroundData.fontSecondary}
-              onChange={(e) => set({ fontSecondary: e.target.value })}
-              placeholder="Secondary font"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100"
-            />
+            <label className="block">
+              <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">Primary Font</span>
+              <input
+                list="google-fonts-list"
+                value={playgroundData.fontPrimary}
+                onChange={(e) => set({ fontPrimary: e.target.value })}
+                placeholder="Type to search fonts (e.g. Inter)"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">Secondary Font</span>
+              <input
+                list="google-fonts-list"
+                value={playgroundData.fontSecondary}
+                onChange={(e) => set({ fontSecondary: e.target.value })}
+                placeholder="Type to search fonts (e.g. Merriweather)"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
+              />
+            </label>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {filteredFonts.map((font) => (
-              <div key={font} className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1">
-                <span className="text-xs text-slate-200">{font}</span>
-                <button
-                  type="button"
-                  className="rounded bg-blue-500 px-2 py-0.5 text-[10px] text-white"
-                  onClick={() => set({ fontPrimary: font })}
-                >
-                  P
-                </button>
-                <button
-                  type="button"
-                  className="rounded border border-slate-500 px-2 py-0.5 text-[10px] text-slate-200"
-                  onClick={() => set({ fontSecondary: font })}
-                >
-                  S
-                </button>
-              </div>
+          <datalist id="google-fonts-list">
+            {googleFontOptions.map((font) => (
+              <option key={font} value={font} />
             ))}
-          </div>
+          </datalist>
 
           <div className="flex flex-wrap gap-2">
             {(["primary", "secondary"] as const).map((opt) => (
