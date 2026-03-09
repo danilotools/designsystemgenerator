@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-type Mode = "landing" | "new" | "existing";
+type Mode = "landing" | "new" | "existing" | "playground";
 type AppTarget =
   | "Mobile App"
   | "Web App"
@@ -130,8 +130,21 @@ type DesignTokens = {
   spacingScale: Record<string, string>;
 };
 
+type PlaygroundData = {
+  primaryColor: string;
+  customColors: string[];
+  paletteCombination: PaletteCombination | "";
+  mode: InterfaceMode | "";
+  fontPrimary: string;
+  fontSecondary: string;
+  bodyFont: "primary" | "secondary";
+  typeScale: TypeScale | "";
+  customFontSizes: Record<string, string>;
+};
+
 const NEW_TOTAL_STEPS = 15;
 const EXISTING_TOTAL_STEPS = 10;
+const PLAYGROUND_TOTAL_STEPS = 2;
 
 const initialNewBrand: NewBrandData = {
   brandName: "",
@@ -171,8 +184,48 @@ const initialExistingBrand: ExistingBrandData = {
   paletteCombination: "",
 };
 
+const initialPlayground: PlaygroundData = {
+  primaryColor: "#3b82f6",
+  customColors: [],
+  paletteCombination: "Complementary",
+  mode: "Dark",
+  fontPrimary: "Inter",
+  fontSecondary: "Merriweather",
+  bodyFont: "primary",
+  typeScale: "Balanced",
+  customFontSizes: getTypeScale("Balanced"),
+};
+
 const chipBase =
   "rounded-xl border px-4 py-2 text-sm transition-all duration-200 cursor-pointer";
+
+const GOOGLE_FONT_OPTIONS = [
+  "Inter",
+  "Roboto",
+  "Poppins",
+  "Manrope",
+  "DM Sans",
+  "Nunito Sans",
+  "Merriweather",
+  "Lora",
+  "Playfair Display",
+  "Source Sans 3",
+  "IBM Plex Sans",
+  "Work Sans",
+  "Space Grotesk",
+  "Figtree",
+  "Rubik",
+  "Raleway",
+  "Montserrat",
+  "Open Sans",
+  "Noto Sans",
+  "Mulish",
+  "Plus Jakarta Sans",
+  "Sora",
+  "Archivo",
+  "Karla",
+  "Cabin",
+];
 
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace("#", "");
@@ -569,6 +622,27 @@ function generateTokensFromExisting(data: ExistingBrandData): DesignTokens {
   };
 }
 
+function generateTokensFromPlayground(data: PlaygroundData): DesignTokens {
+  const harmony = getHarmonyColors(data.primaryColor, data.paletteCombination);
+  const secondary = data.customColors[0] || harmony.secondary;
+  const tertiary = data.customColors[1] || harmony.tertiary;
+  const fontSizes = Object.keys(data.customFontSizes).length
+    ? data.customFontSizes
+    : getTypeScale(data.typeScale || "Balanced");
+
+  return {
+    colors: buildPalette(data.primaryColor, secondary, tertiary, data.mode),
+    fontFamily: {
+      primary: data.fontPrimary || "Inter",
+      secondary: data.fontSecondary || "Merriweather",
+    },
+    fontSizes,
+    lineHeights: getLineHeightsFromSizes(fontSizes),
+    fontWeights: { regular: 400, medium: 500, semibold: 600, bold: 700 },
+    spacingScale: getSpacingScale("Balanced spacing"),
+  };
+}
+
 function toDtcgFigmaVariables(tokens: DesignTokens) {
   const colorScales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const colors = {
@@ -944,10 +1018,17 @@ export default function Home() {
   const [existingImportText, setExistingImportText] = useState("");
   const [existingImportError, setExistingImportError] = useState("");
 
-  const generatedTokens = newTokens || existingTokens;
+  const [playgroundStep, setPlaygroundStep] = useState(1);
+  const [playgroundData, setPlaygroundData] = useState<PlaygroundData>(initialPlayground);
+  const [playgroundTokens, setPlaygroundTokens] = useState<DesignTokens | null>(null);
+  const [playgroundFontSearch, setPlaygroundFontSearch] = useState("");
+
+  const generatedTokens = newTokens || existingTokens || playgroundTokens;
 
   const isFinal =
-    (mode === "new" && newTokens !== null) || (mode === "existing" && existingTokens !== null);
+    (mode === "new" && newTokens !== null) ||
+    (mode === "existing" && existingTokens !== null) ||
+    (mode === "playground" && playgroundTokens !== null);
 
   if (isFinal && generatedTokens) {
     return (
@@ -965,6 +1046,8 @@ export default function Home() {
               setExistingStep(1);
               setNewTokens(null);
               setExistingTokens(null);
+              setPlaygroundStep(1);
+              setPlaygroundTokens(null);
             }}
           >
             New Project
@@ -972,7 +1055,10 @@ export default function Home() {
         </header>
 
         <div className="rounded-3xl border border-slate-700/70 bg-slate-900/70 p-6 shadow-[0_20px_80px_rgba(0,0,0,0.45)] sm:p-8">
-          <TokenPreview tokens={generatedTokens} mode={mode === "new" ? newData.interfaceMode : existingData.mode} />
+          <TokenPreview
+            tokens={generatedTokens}
+            mode={mode === "new" ? newData.interfaceMode : mode === "existing" ? existingData.mode : playgroundData.mode}
+          />
           <div className="mt-8 rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4">
             <h3 className="text-sm font-semibold text-blue-100">Import Into Figma Variables</h3>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-200">
@@ -1002,7 +1088,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid w-full max-w-3xl gap-5 sm:grid-cols-2">
+        <div className="grid w-full max-w-4xl gap-5 sm:grid-cols-3">
           <button
             className="group rounded-3xl border border-slate-700/80 bg-slate-900/70 p-8 text-left transition duration-300 hover:-translate-y-0.5 hover:border-blue-400/60 hover:shadow-[0_12px_48px_rgba(59,130,246,0.15)]"
             onClick={() => {
@@ -1024,7 +1110,7 @@ export default function Home() {
             className="group rounded-3xl border border-slate-700/80 bg-slate-900/70 p-8 text-left transition duration-300 hover:-translate-y-0.5 hover:border-blue-400/60 hover:shadow-[0_12px_48px_rgba(59,130,246,0.15)]"
             onClick={() => {
               setMode("existing");
-              setExistingStep(1);
+              setExistingStep(2);
               setExistingTokens(null);
               setExistingImportText("");
               setExistingImportError("");
@@ -1036,6 +1122,23 @@ export default function Home() {
             <h2 className="text-2xl font-semibold text-slate-100">Existing Brand</h2>
             <p className="mt-2 text-base text-slate-100">
               Import brand colors and fonts to generate a design system.
+            </p>
+          </button>
+
+          <button
+            className="group rounded-3xl border border-slate-700/80 bg-slate-900/70 p-8 text-left transition duration-300 hover:-translate-y-0.5 hover:border-blue-400/60 hover:shadow-[0_12px_48px_rgba(59,130,246,0.15)]"
+            onClick={() => {
+              setMode("playground");
+              setPlaygroundStep(1);
+              setPlaygroundTokens(null);
+            }}
+          >
+            <div className="mb-4 inline-flex rounded-xl border border-slate-700 bg-slate-950 p-2">
+              <IconImport />
+            </div>
+            <h2 className="text-2xl font-semibold text-slate-100">Playground</h2>
+            <p className="mt-2 text-base text-slate-100">
+              Experiment with colors and fonts, preview live, then export tokens.
             </p>
           </button>
         </div>
@@ -1691,6 +1794,238 @@ export default function Home() {
     );
   }
 
+  if (mode === "playground") {
+    const step = playgroundStep;
+    const set = (patch: Partial<PlaygroundData>) =>
+      setPlaygroundData((prev) => ({ ...prev, ...patch }));
+    const previewTokens = generateTokensFromPlayground(playgroundData);
+    const filteredFonts = GOOGLE_FONT_OPTIONS.filter((font) =>
+      font.toLowerCase().includes(playgroundFontSearch.toLowerCase()),
+    ).slice(0, 12);
+
+    if (step === 1) {
+      return (
+        <StepShell
+          title="Playground - Color Picker"
+          description="Add a primary color, select a harmony combination, and preview full generated shades."
+          step={1}
+          total={PLAYGROUND_TOTAL_STEPS}
+          onBack={() => setMode("landing")}
+          onNext={() => setPlaygroundStep(2)}
+          canBack
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                className="h-12 w-16 rounded-lg border border-slate-600 bg-slate-950"
+                value={playgroundData.primaryColor}
+                onChange={(e) => set({ primaryColor: e.target.value })}
+              />
+              <input
+                value={playgroundData.primaryColor}
+                onChange={(e) => set({ primaryColor: e.target.value })}
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {(["Complementary", "Monochromatic", "Analogous", "Triadic", "Tetradic"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  className={`${chipBase} ${
+                    playgroundData.paletteCombination === opt
+                      ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                  }`}
+                  onClick={() => set({ paletteCombination: opt })}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {(["Light", "Dark"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  className={`${chipBase} ${
+                    playgroundData.mode === opt
+                      ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                  }`}
+                  onClick={() => set({ mode: opt })}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
+              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-slate-400">Optional extra brand colors</p>
+              <div className="space-y-2">
+                {playgroundData.customColors.map((color, index) => (
+                  <div key={`${color}-${index}`} className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => {
+                        const next = [...playgroundData.customColors];
+                        next[index] = e.target.value;
+                        set({ customColors: next });
+                      }}
+                      className="h-9 w-12 rounded-lg border border-slate-600 bg-slate-950"
+                    />
+                    <input
+                      value={color}
+                      onChange={(e) => {
+                        const next = [...playgroundData.customColors];
+                        next[index] = e.target.value;
+                        set({ customColors: next });
+                      }}
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="mt-3 rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200"
+                onClick={() =>
+                  set({ customColors: [...playgroundData.customColors.slice(0, 1), "#22c55e"].slice(0, 2) })
+                }
+              >
+                Add Color (max 2)
+              </button>
+            </div>
+
+            <TokenPreview
+              tokens={previewTokens}
+              mode={playgroundData.mode}
+              primaryColor={previewTokens.colors["primary/500"]}
+              onPrimaryColorChange={(next) => set({ primaryColor: next })}
+            />
+          </div>
+        </StepShell>
+      );
+    }
+
+    return (
+      <StepShell
+        title="Playground - Font Picker"
+        description="Pick up to 2 fonts, set body baseline, choose scale, and fine-tune each size."
+        step={2}
+        total={PLAYGROUND_TOTAL_STEPS}
+        onBack={() => setPlaygroundStep(1)}
+        onNext={() => setPlaygroundTokens(previewTokens)}
+        nextLabel="Export JSON"
+      >
+        <div className="space-y-4">
+          <input
+            value={playgroundFontSearch}
+            onChange={(e) => setPlaygroundFontSearch(e.target.value)}
+            placeholder="Search Google Fonts list (e.g. Inter, Manrope)"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
+          />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input
+              value={playgroundData.fontPrimary}
+              onChange={(e) => set({ fontPrimary: e.target.value })}
+              placeholder="Primary font"
+              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100"
+            />
+            <input
+              value={playgroundData.fontSecondary}
+              onChange={(e) => set({ fontSecondary: e.target.value })}
+              placeholder="Secondary font"
+              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {filteredFonts.map((font) => (
+              <div key={font} className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1">
+                <span className="text-xs text-slate-200">{font}</span>
+                <button
+                  type="button"
+                  className="rounded bg-blue-500 px-2 py-0.5 text-[10px] text-white"
+                  onClick={() => set({ fontPrimary: font })}
+                >
+                  P
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-slate-500 px-2 py-0.5 text-[10px] text-slate-200"
+                  onClick={() => set({ fontSecondary: font })}
+                >
+                  S
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {(["primary", "secondary"] as const).map((opt) => (
+              <button
+                key={opt}
+                className={`${chipBase} ${
+                  playgroundData.bodyFont === opt
+                    ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                    : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                }`}
+                onClick={() => set({ bodyFont: opt })}
+              >
+                Body: {opt === "primary" ? "Primary font" : "Secondary font"}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {(["Compact", "Balanced", "Expressive"] as const).map((opt) => (
+              <button
+                key={opt}
+                className={`${chipBase} ${
+                  playgroundData.typeScale === opt
+                    ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                    : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                }`}
+                onClick={() => set({ typeScale: opt, customFontSizes: getTypeScale(opt) })}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
+            <p className="mb-3 text-xs uppercase tracking-[0.12em] text-slate-400">Edit font sizes manually</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {Object.entries(playgroundData.customFontSizes).map(([key, value]) => (
+                <label key={key} className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 px-3 py-2">
+                  <span className="text-xs text-slate-300">{key}</span>
+                  <input
+                    value={value}
+                    onChange={(e) =>
+                      set({
+                        customFontSizes: {
+                          ...playgroundData.customFontSizes,
+                          [key]: e.target.value,
+                        },
+                      })
+                    }
+                    className="w-20 rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <TokenPreview tokens={previewTokens} mode={playgroundData.mode} />
+        </div>
+      </StepShell>
+    );
+  }
+
   const step = existingStep;
   const set = (patch: Partial<ExistingBrandData>) =>
     setExistingData((prev) => ({ ...prev, ...patch }));
@@ -1723,7 +2058,7 @@ export default function Home() {
         description="Add one or more hex colors and preview the palette."
         step={2}
         total={EXISTING_TOTAL_STEPS}
-        onBack={() => setExistingStep(1)}
+        onBack={() => setMode("landing")}
         onNext={() => {
           const normalized = existingData.brandColors
             .map((color) => normalizeHex(color))
