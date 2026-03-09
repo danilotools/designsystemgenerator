@@ -377,6 +377,18 @@ function getReadableTextColor(bgHex: string): string {
   return luminance > 0.6 ? "#0F172A" : "#F8FAFC";
 }
 
+function ensureGoogleFontLoaded(fontFamily: string) {
+  if (!fontFamily) return;
+  const id = `gf-${fontFamily.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  const familyParam = fontFamily.trim().replace(/\s+/g, "+");
+  link.href = `https://fonts.googleapis.com/css2?family=${familyParam}:wght@400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+}
+
 function getPrimaryFromDirection(direction: string): string {
   switch (direction) {
     case "Warm":
@@ -741,6 +753,20 @@ function IconImport() {
   );
 }
 
+function IconPlayground() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-blue-300">
+      <path
+        d="M6 6h12v12H6zM9 9h6v6H9z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function StepShell({
   title,
   description,
@@ -819,11 +845,13 @@ function TokenPreview({
   mode = "Dark",
   primaryColor,
   onPrimaryColorChange,
+  bodyFontFamily,
 }: {
   tokens: DesignTokens;
   mode?: InterfaceMode | "";
   primaryColor?: string;
   onPrimaryColorChange?: (next: string) => void;
+  bodyFontFamily?: string;
 }) {
   const scales = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900"];
   const primary = tokens.colors["primary/500"];
@@ -831,6 +859,7 @@ function TokenPreview({
   const neutral900 = tokens.colors["neutral/900"];
   const neutral100 = tokens.colors["neutral/100"];
   const activeMode: InterfaceMode = (mode || "Dark") as InterfaceMode;
+  const bodyFont = bodyFontFamily || tokens.fontFamily.secondary;
 
   return (
     <div className="space-y-6">
@@ -883,7 +912,7 @@ function TokenPreview({
                 <p className="text-sm font-semibold" style={{ fontFamily: `${tokens.fontFamily.primary}, sans-serif` }}>
                   Design System Preview Card
                 </p>
-                <p className="mt-1 text-sm" style={{ color: mutedText, fontFamily: `${tokens.fontFamily.secondary}, serif` }}>
+                <p className="mt-1 text-sm" style={{ color: mutedText, fontFamily: `${bodyFont}, sans-serif` }}>
                   Typography, color, and spacing tokens applied to a realistic UI block.
                 </p>
 
@@ -935,9 +964,13 @@ function TokenPreview({
         <div className="rounded-xl border border-slate-700/70 bg-slate-900 p-4">
           <h3 className="mb-3 text-xs uppercase tracking-[0.15em] text-slate-400">Typography</h3>
           <p className="text-sm text-slate-300">Primary: {tokens.fontFamily.primary}</p>
-          <p className="text-sm text-slate-300">Secondary: {tokens.fontFamily.secondary}</p>
-          <p className="mt-3 text-2xl font-semibold text-slate-100">Display Preview</p>
-          <p className="text-sm text-slate-400">Body text preview for hierarchy.</p>
+          <p className="text-sm text-slate-300">Body: {bodyFont}</p>
+          <p className="mt-3 text-2xl font-semibold text-slate-100" style={{ fontFamily: `${tokens.fontFamily.primary}, sans-serif` }}>
+            Display Preview
+          </p>
+          <p className="text-sm text-slate-400" style={{ fontFamily: `${bodyFont}, sans-serif` }}>
+            Body text preview for hierarchy.
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-700/70 bg-slate-900 p-4">
@@ -1051,6 +1084,11 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    ensureGoogleFontLoaded(playgroundData.fontPrimary);
+    ensureGoogleFontLoaded(playgroundData.fontSecondary);
+  }, [playgroundData.fontPrimary, playgroundData.fontSecondary]);
+
   const generatedTokens = newTokens || existingTokens || playgroundTokens;
 
   const isFinal =
@@ -1086,6 +1124,7 @@ export default function Home() {
           <TokenPreview
             tokens={generatedTokens}
             mode={mode === "new" ? newData.interfaceMode : mode === "existing" ? existingData.mode : playgroundData.mode}
+            bodyFontFamily={mode === "playground" ? (playgroundData.bodyFont === "primary" ? playgroundData.fontPrimary : playgroundData.fontSecondary) : undefined}
           />
           <div className="mt-8 rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4">
             <h3 className="text-sm font-semibold text-blue-100">Import Into Figma Variables</h3>
@@ -1162,7 +1201,7 @@ export default function Home() {
             }}
           >
             <div className="mb-4 inline-flex rounded-xl border border-slate-700 bg-slate-950 p-2">
-              <IconImport />
+              <IconPlayground />
             </div>
             <h2 className="text-2xl font-semibold text-slate-100">Playground</h2>
             <p className="mt-2 text-base text-slate-100">
@@ -1929,6 +1968,7 @@ export default function Home() {
               mode={playgroundData.mode}
               primaryColor={previewTokens.colors["primary/500"]}
               onPrimaryColorChange={(next) => set({ primaryColor: next })}
+              bodyFontFamily={playgroundData.bodyFont === "primary" ? playgroundData.fontPrimary : playgroundData.fontSecondary}
             />
           </div>
         </StepShell>
@@ -1971,6 +2011,14 @@ export default function Home() {
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none ring-blue-400 transition focus:ring"
               />
             </label>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <p className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200">
+              Selected Primary: <span className="font-semibold">{playgroundData.fontPrimary}</span>
+            </p>
+            <p className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200">
+              Selected Secondary: <span className="font-semibold">{playgroundData.fontSecondary}</span>
+            </p>
           </div>
           <datalist id="google-fonts-list">
             {googleFontOptions.map((font) => (
@@ -2033,7 +2081,11 @@ export default function Home() {
             </div>
           </div>
 
-          <TokenPreview tokens={previewTokens} mode={playgroundData.mode} />
+          <TokenPreview
+            tokens={previewTokens}
+            mode={playgroundData.mode}
+            bodyFontFamily={playgroundData.bodyFont === "primary" ? playgroundData.fontPrimary : playgroundData.fontSecondary}
+          />
         </div>
       </StepShell>
     );
